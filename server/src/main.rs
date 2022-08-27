@@ -54,10 +54,6 @@ async fn hook_handler(
     State(state): State<AppState>,
     Json(payload): Json<structs::WebhookPayload>,
 ) -> &'static str {
-    state.tracer.in_span("test", |cx| {
-        println!("{:#?}", payload);
-    });
-
     match payload {
         structs::WebhookPayload::PingEvent {
             happened_at,
