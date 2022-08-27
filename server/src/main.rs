@@ -8,20 +8,8 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
-#[derive(Deserialize, Debug)]
-struct WebHookDescriptor {
-    id: String,
-    name: String,
-}
+mod structs;
 
-#[derive(Deserialize, Debug)]
-struct PingEvent {
-    happened_at: String,
-    id: String,
-    #[serde(rename = "type")]
-    typë: String,
-    webhook: WebHookDescriptor,
-}
 
 #[tokio::main]
 async fn main() {
@@ -42,12 +30,12 @@ async fn root() -> &'static str {
     "Hello, Mikey and backendsouls!"
 }
 
-async fn hook_handler(Json(payload): Json<serde_json::Value>) -> &'static str {
-    println!("{:#?}", payload);
-    "Hello, Mikey and backendsouls!"
-}
-
-// async fn hook_handler(Json(payload): Json<PingEvent>) -> &'static str {
+// async fn hook_handler(Json(payload): Json<serde_json::Value>) -> &'static str {
 //     println!("{:#?}", payload);
 //     "Hello, Mikey and backendsouls!"
 // }
+
+async fn hook_handler(Json(payload): Json<structs::WebhookPayload>) -> &'static str {
+    println!("{:#?}", payload);
+    "Hello, Mikey and backendsouls!"
+}
