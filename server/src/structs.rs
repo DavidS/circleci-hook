@@ -1,9 +1,11 @@
+use chrono::{DateTime, FixedOffset};
 use serde::Deserialize;
+use uuid::Uuid;
 
 #[derive(Deserialize, Debug)]
 pub struct Organization {
-    id: String,
-    name: String,
+    pub id: String,
+    pub name: String,
 }
 // TODO: complete full deserialisation here
 // #[derive(Deserialize, Debug)]
@@ -18,43 +20,43 @@ pub struct Organization {
 // }
 #[derive(Deserialize, Debug)]
 pub struct Pipeline {
-    created_at: String,
-    id: String,
-    number: i64,
+    pub created_at: DateTime<FixedOffset>,
+    pub id: Uuid,
+    pub number: i64,
     // TODO: complete full deserialisation here
-    trigger: Option<serde_json::Value>,
+    pub trigger: Option<serde_json::Value>,
     // TODO: complete full deserialisation here
-    vcs: Option<serde_json::Value>,
+    pub vcs: Option<serde_json::Value>,
 }
 #[derive(Deserialize, Debug)]
 pub struct Project {
-    id: String,
-    name: String,
-    slug: String,
+    pub id: Uuid,
+    pub name: String,
+    pub slug: String,
 }
 #[derive(Deserialize, Debug)]
 pub struct Webhook {
-    id: String,
-    name: String,
+    pub id: Uuid,
+    pub name: String,
 }
 #[derive(Deserialize, Debug)]
 pub struct Workflow {
-    created_at: String,
-    id: String,
-    name: String,
-    status: Option<String>,
-    stopped_at: Option<String>,
-    url: String,
+    pub created_at: DateTime<FixedOffset>,
+    pub id: Uuid,
+    pub name: String,
+    pub status: Option<String>,
+    pub stopped_at: Option<DateTime<FixedOffset>>,
+    pub url: String,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Job {
-    id: String,
-    name: String,
-    number: i64,
-    started_at: String,
-    status: String,
-    stopped_at: Option<String>,
+    pub id: Uuid,
+    pub name: String,
+    pub number: i64,
+    pub started_at: DateTime<FixedOffset>,
+    pub status: String,
+    pub stopped_at: Option<DateTime<FixedOffset>>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -62,13 +64,13 @@ pub struct Job {
 pub enum WebhookPayload {
     #[serde(rename = "ping")]
     PingEvent {
-        happened_at: String,
-        id: String,
+        happened_at: DateTime<FixedOffset>,
+        id: Uuid,
         webhook: Webhook,
     },
     #[serde(rename = "workflow-completed")]
     WorkflowCompleted {
-        id: String,
+        id: Uuid,
         happened_at: String,
         webhook: Webhook,
         workflow: Workflow,
@@ -84,7 +86,7 @@ pub enum WebhookPayload {
         organization: Organization,
         workflow: Workflow,
         project: Project,
-        id: String,
+        id: Uuid,
         job: Job,
     },
 }

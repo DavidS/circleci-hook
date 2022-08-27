@@ -7,9 +7,11 @@ version = "0.0.0"
 
 [dependencies]
 axum = "0.6.0-rc"
+chrono = {version = "0.4", features = ["serde"]}
 opentelemetry = "0.17.0"
 serde = {version = "1.0", features = ["derive"]}
 serde_json = "1.0"
 tokio = {version = "1.0", features = ["full"]}
 tracing = "0.1.35"
 tracing-subscriber = "0.3.14"
+uuid = {version = "1.1", features = ["serde"]}

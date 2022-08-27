@@ -10,7 +10,10 @@ use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
 use opentelemetry::{
-    global, sdk::export::trace::stdout, sdk::trace::Tracer, trace::Tracer as OtherTracer,
+    global,
+    sdk::export::trace::stdout,
+    sdk::trace::Tracer,
+    trace::{TraceId, Tracer as OtherTracer},
 };
 
 mod structs;
@@ -54,5 +57,58 @@ async fn hook_handler(
     state.tracer.in_span("test", |cx| {
         println!("{:#?}", payload);
     });
+
+    match payload {
+        structs::WebhookPayload::PingEvent {
+            happened_at,
+            id,
+            webhook,
+        } => {
+            state
+                .tracer
+                .span_builder("test2")
+                .with_trace_id(TraceId::from_bytes(*id.as_bytes()))
+                .with_start_time(happened_at)
+                .with_end_time(happened_at);
+        }
+        structs::WebhookPayload::WorkflowCompleted {
+            id,
+            happened_at,
+            webhook,
+            workflow,
+            pipeline,
+            project,
+            organization,
+        } => {
+            if let Some(stopped_at) = workflow.stopped_at {
+                state
+                    .tracer
+                    .span_builder("test2")
+                    .with_trace_id(TraceId::from_bytes(*pipeline.id.as_bytes()))
+                    .with_start_time(workflow.created_at)
+                    .with_end_time(stopped_at);
+            }
+        }
+        structs::WebhookPayload::JobCompleted {
+            happened_at,
+            pipeline,
+            webhook,
+            organization,
+            workflow,
+            project,
+            id,
+            job,
+        } => {
+            if let Some(stopped_at) = job.stopped_at {
+                state
+                    .tracer
+                    .span_builder("test2")
+                    .with_trace_id(TraceId::from_bytes(*pipeline.id.as_bytes()))
+                    .with_start_time(job.started_at)
+                    .with_end_time(stopped_at);
+            }
+        }
+    }
+
     "Hello, Mikey and backendsouls!"
 }
