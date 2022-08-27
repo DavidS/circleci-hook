@@ -8,10 +8,27 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
+#[derive(Deserialize, Debug)]
+struct WebHookDescriptor {
+    id: String,
+    name: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct PingEvent {
+    happened_at: String,
+    id: String,
+    #[serde(rename = "type")]
+    typë: String,
+    webhook: WebHookDescriptor,
+}
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
-    let app = Router::new().route("/", get(root));
+    let app = Router::new()
+        .route("/", get(root))
+        .route("/", post(hook_handler));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::info!("listening on {}", addr);
@@ -22,5 +39,15 @@ async fn main() {
 }
 
 async fn root() -> &'static str {
-    "Hello, World!"
+    "Hello, Mikey and backendsouls!"
 }
+
+async fn hook_handler(Json(payload): Json<serde_json::Value>) -> &'static str {
+    println!("{:#?}", payload);
+    "Hello, Mikey and backendsouls!"
+}
+
+// async fn hook_handler(Json(payload): Json<PingEvent>) -> &'static str {
+//     println!("{:#?}", payload);
+//     "Hello, Mikey and backendsouls!"
+// }
