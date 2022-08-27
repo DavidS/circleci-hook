@@ -6,7 +6,7 @@ kill_timeout = 5
 processes = []
 
 [build]
-  builder = "docker.io/paketocommunity/rust"
+  builder = "docker.cloudsmith.io/dev_el_ops/stuff/rust-builder"
   buildpacks = ["docker.io/paketocommunity/rust"]
 
 [env]
