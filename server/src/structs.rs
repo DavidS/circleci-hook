@@ -5,28 +5,26 @@ pub struct Organization {
     id: String,
     name: String,
 }
-#[derive(Deserialize, Debug)]
-pub struct Trigger {
-    #[serde(rename = "type")]
-    typë: String,
-}
-#[derive(Deserialize, Debug)]
-pub struct Vcs {
-    branch: String,
-    // TODO: complete full deserialisation here
-    commit: serde_json::Value,
-    origin_repository_url: String,
-    provider_name: String,
-    revision: String,
-    target_repository_url: String,
-}
+// TODO: complete full deserialisation here
+// #[derive(Deserialize, Debug)]
+// pub struct Vcs {
+//     branch: String,
+//     // TODO: complete full deserialisation here
+//     commit: serde_json::Value,
+//     origin_repository_url: String,
+//     provider_name: String,
+//     revision: String,
+//     target_repository_url: String,
+// }
 #[derive(Deserialize, Debug)]
 pub struct Pipeline {
     created_at: String,
     id: String,
     number: i64,
-    trigger: Trigger,
-    vcs: Vcs,
+    // TODO: complete full deserialisation here
+    trigger: Option<serde_json::Value>,
+    // TODO: complete full deserialisation here
+    vcs: Option<serde_json::Value>,
 }
 #[derive(Deserialize, Debug)]
 pub struct Project {
@@ -45,7 +43,7 @@ pub struct Workflow {
     id: String,
     name: String,
     status: Option<String>,
-    stopped_at: String,
+    stopped_at: Option<String>,
     url: String,
 }
 
@@ -56,7 +54,7 @@ pub struct Job {
     number: i64,
     started_at: String,
     status: String,
-    stopped_at: String,
+    stopped_at: Option<String>,
 }
 
 // Example webhook payload:
