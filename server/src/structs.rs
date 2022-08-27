@@ -57,17 +57,6 @@ pub struct Job {
     stopped_at: Option<String>,
 }
 
-// Example webhook payload:
-// {
-//     "happened_at": "2022-08-27T20:16:36.531665Z",
-//     "id": "00f3055f-d25c-4641-bdcd-33e19f3b5d7d",
-//     "type": "ping",
-//     "webhook": {
-//         "id": "d4ab06bc-eb79-463d-8aa4-47d066382d3b",
-//         "name": "ngrok test"
-//     }
-// }
-
 #[derive(Deserialize, Debug)]
 #[serde(tag = "type")]
 pub enum WebhookPayload {
@@ -100,14 +89,15 @@ pub enum WebhookPayload {
     },
 }
 
-/// The PingEvent is sent by circleci for testing.
-// #[derive(Deserialize, Debug)]
-// struct PingEvent {
-//     happened_at: String,
-//     id: String,
-//     #[serde(rename = "type")]
-//     typë: String,
-//     webhook: WebHookDescriptor,
+// Example webhook payload:
+// {
+//     "happened_at": "2022-08-27T20:16:36.531665Z",
+//     "id": "00f3055f-d25c-4641-bdcd-33e19f3b5d7d",
+//     "type": "ping",
+//     "webhook": {
+//         "id": "d4ab06bc-eb79-463d-8aa4-47d066382d3b",
+//         "name": "ngrok test"
+//     }
 // }
 
 // Example webhook payload: "workflow-completed"
@@ -166,15 +156,6 @@ pub enum WebhookPayload {
 //         "url": String("https://app.circleci.com/pipelines/github/DavidS/circleci-hook/10/workflows/410c427b-40a8-4bb4-9d42-5561f5bce5ba"),
 //     },
 // }
-
-#[derive(Deserialize, Debug)]
-struct WorkflowCompleted {
-    happened_at: String,
-    id: String,
-    #[serde(rename = "type")]
-    typë: String,
-    webhook: Webhook,
-}
 
 // Example webhook payload: "job-completed"
 // Object {
