@@ -5,6 +5,10 @@ kill_signal = "SIGINT"
 kill_timeout = 5
 processes = []
 
+[build]
+  builder = "docker.io/paketocommunity/rust"
+  buildpacks = ["docker.io/paketocommunity/rust"]
+
 [env]
 
 [experimental]
