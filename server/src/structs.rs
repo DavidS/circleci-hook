@@ -44,7 +44,7 @@ pub struct Workflow {
     created_at: String,
     id: String,
     name: String,
-    status: String,
+    status: Option<String>,
     stopped_at: String,
     url: String,
 }
@@ -81,24 +81,24 @@ pub enum WebhookPayload {
     },
     #[serde(rename = "workflow-completed")]
     WorkflowCompleted {
-        happened_at: String,
         id: String,
-        organization: Organization,
-        pipeline: Pipeline,
-        project: Project,
+        happened_at: String,
         webhook: Webhook,
         workflow: Workflow,
+        pipeline: Pipeline,
+        project: Project,
+        organization: Organization,
     },
     #[serde(rename = "job-completed")]
     JobCompleted {
         happened_at: String,
+        pipeline: Pipeline,
+        webhook: Webhook,
+        organization: Organization,
+        workflow: Workflow,
+        project: Project,
         id: String,
         job: Job,
-        organization: Organization,
-        pipeline: Pipeline,
-        project: Project,
-        webhook: Webhook,
-        workflow: Workflow,
     },
 }
 
