@@ -107,5 +107,5 @@ async fn hook_handler(
         }
     }
 
-    "Hello, Mikey and backendsouls!"
+    "Success!"
 }
