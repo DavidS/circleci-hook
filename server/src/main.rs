@@ -13,7 +13,7 @@ use opentelemetry::{
     global,
     sdk::export::trace::stdout,
     sdk::trace::Tracer,
-    trace::{TraceId, Tracer as OtherTracer},
+    trace::{SpanBuilder, TraceId, Tracer as OtherTracer},
 };
 
 mod structs;
@@ -71,24 +71,7 @@ async fn hook_handler(
                 .with_start_time(happened_at)
                 .with_end_time(happened_at);
         }
-        structs::WebhookPayload::WorkflowCompleted {
-            id,
-            happened_at,
-            webhook,
-            workflow,
-            pipeline,
-            project,
-            organization,
-        } => {
-            if let Some(stopped_at) = workflow.stopped_at {
-                state
-                    .tracer
-                    .span_builder("test2")
-                    .with_trace_id(TraceId::from_bytes(*pipeline.id.as_bytes()))
-                    .with_start_time(workflow.created_at)
-                    .with_end_time(stopped_at);
-            }
-        }
+
         structs::WebhookPayload::JobCompleted {
             happened_at,
             pipeline,
@@ -100,12 +83,30 @@ async fn hook_handler(
             job,
         } => {
             if let Some(stopped_at) = job.stopped_at {
-                state
-                    .tracer
-                    .span_builder("test2")
-                    .with_trace_id(TraceId::from_bytes(*pipeline.id.as_bytes()))
-                    .with_start_time(job.started_at)
-                    .with_end_time(stopped_at);
+                state.tracer.build(
+                    SpanBuilder::from_name("job-completed")
+                        .with_trace_id(TraceId::from_bytes(*pipeline.id.as_bytes()))
+                        .with_start_time(job.started_at)
+                        .with_end_time(stopped_at),
+                );
+            }
+        }
+        structs::WebhookPayload::WorkflowCompleted {
+            id,
+            happened_at,
+            webhook,
+            workflow,
+            pipeline,
+            project,
+            organization,
+        } => {
+            if let Some(stopped_at) = workflow.stopped_at {
+                state.tracer.build(
+                    SpanBuilder::from_name("workflow-completed")
+                        .with_trace_id(TraceId::from_bytes(*pipeline.id.as_bytes()))
+                        .with_start_time(workflow.created_at)
+                        .with_end_time(stopped_at),
+                );
             }
         }
     }
