@@ -60,12 +60,12 @@ async fn hook_handler(
             id,
             webhook,
         } => {
-            state
-                .tracer
-                .span_builder("test2")
-                .with_trace_id(TraceId::from_bytes(*id.as_bytes()))
-                .with_start_time(happened_at)
-                .with_end_time(happened_at);
+            state.tracer.build(
+                SpanBuilder::from_name("ping")
+                    .with_trace_id(TraceId::from_bytes(*id.as_bytes()))
+                    .with_start_time(happened_at)
+                    .with_end_time(happened_at),
+            );
         }
 
         structs::WebhookPayload::JobCompleted {
