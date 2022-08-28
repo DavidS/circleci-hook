@@ -6,27 +6,54 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
-
 use opentelemetry::{
     global,
     sdk::export::trace::stdout,
-    sdk::trace::Tracer,
+    sdk::{trace as sdktrace, Resource},
     trace::{SpanBuilder, SpanId, TraceId, Tracer as OtherTracer},
+    KeyValue,
 };
+use opentelemetry_otlp::{Protocol, WithExportConfig};
+use serde::{Deserialize, Serialize};
+use std::net::SocketAddr;
+// use tonic::{metadata::MetadataMap, transport::ClientTlsConfig};
 
 mod structs;
 
 #[derive(Clone)]
 struct AppState {
-    tracer: Tracer,
+    tracer: sdktrace::Tracer,
 }
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
-    let tracer = stdout::new_pipeline().install_simple();
+
+    // let mut map = MetadataMap::new();
+    // map.insert(
+    //     "x-honeycomb-team",
+    //     env!("HONEYCOMB_API_KEY").parse().unwrap(),
+    // );
+
+    let tracer = opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_exporter(
+            opentelemetry_otlp::new_exporter()
+                .tonic()
+                // .with_endpoint(env!("OTEL_EXPORTER_OTLP_ENDPOINT"))
+                // .with_env()
+                // .with_tls_config(ClientTlsConfig::new())
+                // .with_metadata(map),
+        )
+        .with_trace_config(
+            sdktrace::config().with_resource(Resource::new(vec![KeyValue::new(
+                opentelemetry_semantic_conventions::resource::SERVICE_NAME,
+                "circleci-hook",
+            )])),
+        )
+        .install_simple()
+        // .install_batch(opentelemetry::runtime::Tokio)
+        .expect("build an OTLP tracer");
     let state = AppState { tracer };
 
     let app = Router::with_state(state)
@@ -54,6 +81,7 @@ async fn hook_handler(
     State(state): State<AppState>,
     Json(payload): Json<structs::WebhookPayload>,
 ) -> &'static str {
+    println!("Received request");
     match payload {
         structs::WebhookPayload::PingEvent {
             happened_at,
