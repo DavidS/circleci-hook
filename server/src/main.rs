@@ -1,3 +1,4 @@
+use arrayref::array_ref;
 use axum::{
     extract::State,
     http::StatusCode,
@@ -5,7 +6,6 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
@@ -13,7 +13,7 @@ use opentelemetry::{
     global,
     sdk::export::trace::stdout,
     sdk::trace::Tracer,
-    trace::{SpanBuilder, TraceId, Tracer as OtherTracer},
+    trace::{SpanBuilder, SpanId, TraceId, Tracer as OtherTracer},
 };
 
 mod structs;
@@ -79,14 +79,17 @@ async fn hook_handler(
             job,
         } => {
             if let Some(stopped_at) = job.stopped_at {
+                // TODO: try to wedge in the parent span_id from the workflow. Apparently this would require a Context that holds the actual parent span. This sounds too complicated for now. See https://github.com/open-telemetry/opentelemetry-rust/blob/043e4b7523f66e79338ada84e7ab2da53251d448/opentelemetry-api/src/trace/context.rs#L261-L266
                 state.tracer.build(
                     SpanBuilder::from_name("job-completed")
                         .with_trace_id(TraceId::from_bytes(*pipeline.id.as_bytes()))
+                        .with_span_id(SpanId::from_bytes(*array_ref!(job.id.as_bytes(), 0, 8)))
                         .with_start_time(job.started_at)
                         .with_end_time(stopped_at),
                 );
             }
         }
+
         structs::WebhookPayload::WorkflowCompleted {
             id,
             happened_at,
@@ -100,6 +103,11 @@ async fn hook_handler(
                 state.tracer.build(
                     SpanBuilder::from_name("workflow-completed")
                         .with_trace_id(TraceId::from_bytes(*pipeline.id.as_bytes()))
+                        .with_span_id(SpanId::from_bytes(*array_ref!(
+                            pipeline.id.as_bytes(),
+                            0,
+                            8
+                        )))
                         .with_start_time(workflow.created_at)
                         .with_end_time(stopped_at),
                 );

@@ -6,6 +6,7 @@ version = "0.0.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+arrayref = "0.3.6"
 axum = "0.6.0-rc"
 chrono = {version = "0.4", features = ["serde"]}
 opentelemetry = "0.17.0"
