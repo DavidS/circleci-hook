@@ -109,7 +109,7 @@ async fn hook_handler(
             if let Some(stopped_at) = job.stopped_at {
                 // TODO: try to wedge in the parent span_id from the workflow. Apparently this would require a Context that holds the actual parent span. This sounds too complicated for now. See https://github.com/open-telemetry/opentelemetry-rust/blob/043e4b7523f66e79338ada84e7ab2da53251d448/opentelemetry-api/src/trace/context.rs#L261-L266
                 state.tracer.build(
-                    SpanBuilder::from_name("job-completed")
+                    SpanBuilder::from_name("job")
                         .with_trace_id(TraceId::from_bytes(*pipeline.id.as_bytes()))
                         .with_span_id(SpanId::from_bytes(*array_ref!(job.id.as_bytes(), 0, 8)))
                         .with_start_time(job.started_at)
@@ -129,7 +129,7 @@ async fn hook_handler(
         } => {
             if let Some(stopped_at) = workflow.stopped_at {
                 state.tracer.build(
-                    SpanBuilder::from_name("workflow-completed")
+                    SpanBuilder::from_name("workflow")
                         .with_trace_id(TraceId::from_bytes(*pipeline.id.as_bytes()))
                         .with_span_id(SpanId::from_bytes(*array_ref!(
                             pipeline.id.as_bytes(),
