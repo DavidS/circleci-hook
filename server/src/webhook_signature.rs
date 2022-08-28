@@ -3,7 +3,6 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use thiserror::Error;
 
 pub async fn validate_circleci_signature<B>(
     req: Request<B>,
@@ -15,50 +14,49 @@ pub async fn validate_circleci_signature<B>(
         .and_then(|header| header.to_str().ok());
 
     match auth_header {
-        Some(auth_header) if parse_signature(auth_header).is_ok() => Ok(next.run(req).await),
+        Some(auth_header) if get_signature_hash(auth_header).is_some() => Ok(next.run(req).await),
         _ => Err(StatusCode::UNAUTHORIZED),
     }
 }
 
-#[derive(Error, Debug, PartialEq)]
-enum SignatureParseError {
-    #[error("missing signature")]
-    MissingSignature(),
-    #[error("syntax error")]
-    Syntax(),
-    #[error("not implemented")]
-    NotImplemented(),
-}
+fn get_signature_hash<'a>(header_value: &str) -> Option<String> {
+    for signature in header_value.split(",") {
+        let splits: Vec<&str> = signature.split("=").collect();
+        if splits.len() != 2 {
+            println!(
+                "Invalid header `{}`, does contain {} parts!",
+                header_value,
+                splits.len()
+            );
+            return None;
+        }
 
-fn parse_signature<'a>(header_value: &str) -> Result<String, SignatureParseError> {
-    let splits: Vec<&str> = header_value.split("=").collect();
-    if splits.len() != 2 {
-        println!(
-            "Invalid header `{}`, does contain {} parts!",
-            header_value,
-            splits.len()
-        );
-        return Err(SignatureParseError::Syntax());
+        if splits[0] == "v1" {
+            return Some(splits[1].to_string());
+        }
     }
-
-    if splits[0] == "v1" {
-        return Ok(splits[1].to_string());
-    }
-
-    Err(SignatureParseError::NotImplemented())
+    None
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_signature, SignatureParseError};
+    use super::{get_signature_hash};
 
     #[test]
     fn test_empty() {
-        assert_eq!(parse_signature(""), Err(SignatureParseError::Syntax()));
+        assert_eq!(get_signature_hash(""), None);
     }
 
     #[test]
     fn test_only_v1_signature() {
-        assert_eq!(parse_signature("v1=foobar"), Ok("foobar".to_string()));
+        assert_eq!(get_signature_hash("v1=foobar"), Some("foobar".to_string()));
+    }
+
+    #[test]
+    fn test_multiple_signatures() {
+        assert_eq!(
+            get_signature_hash("v1=foobar,v2=wibble"),
+            Some("foobar".to_string())
+        );
     }
 }
