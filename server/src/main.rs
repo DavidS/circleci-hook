@@ -1,7 +1,8 @@
 use arrayref::array_ref;
 use axum::{
+    body::Bytes,
     extract::State,
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     middleware,
     response::IntoResponse,
     routing::{get, post},
@@ -21,7 +22,7 @@ use std::net::SocketAddr;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
-use crate::webhook_signature::validate_circleci_signature;
+use crate::webhook_signature::{get_signature_hash, verify_signature};
 
 mod structs;
 mod webhook_signature;
@@ -65,8 +66,8 @@ async fn main() {
         .route("/", post(hook_handler))
         .layer(
             ServiceBuilder::new()
-                .layer(TraceLayer::new_for_http())
-                .layer(middleware::from_fn(validate_circleci_signature)),
+                // .layer(middleware::from_fn(validate_circleci_signature))
+                .layer(TraceLayer::new_for_http()),
         );
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -88,69 +89,88 @@ async fn root() -> &'static str {
 
 async fn hook_handler(
     State(state): State<AppState>,
-    Json(payload): Json<structs::WebhookPayload>,
+    headers: HeaderMap,
+    body: Bytes,
 ) -> &'static str {
     println!("Received request");
-    match payload {
-        structs::WebhookPayload::PingEvent {
-            happened_at,
-            id,
-            webhook,
-        } => {
-            state.tracer.build(
-                SpanBuilder::from_name("ping")
-                    .with_trace_id(TraceId::from_bytes(*id.as_bytes()))
-                    .with_start_time(happened_at)
-                    .with_end_time(happened_at),
-            );
-        }
+    if let Some(auth_header) = headers
+        .get("circleci-signature")
+        .and_then(|header| header.to_str().ok())
+    {
+        if let Some(signature_hash) = get_signature_hash(auth_header) {
+            if verify_signature(body.as_ref(), b"FOOBAR", signature_hash) {
+                let payload = serde_json::from_slice::<structs::WebhookPayload>(body.as_ref());
+                match payload {
+                    Ok(payload) => match payload {
+                        structs::WebhookPayload::PingEvent {
+                            happened_at,
+                            id,
+                            webhook,
+                        } => {
+                            state.tracer.build(
+                                SpanBuilder::from_name("ping")
+                                    .with_trace_id(TraceId::from_bytes(*id.as_bytes()))
+                                    .with_start_time(happened_at)
+                                    .with_end_time(happened_at),
+                            );
+                        }
 
-        structs::WebhookPayload::JobCompleted {
-            happened_at,
-            pipeline,
-            webhook,
-            organization,
-            workflow,
-            project,
-            id,
-            job,
-        } => {
-            if let Some(stopped_at) = job.stopped_at {
-                // TODO: try to wedge in the parent span_id from the workflow. Apparently this would require a Context that holds the actual parent span. This sounds too complicated for now. See https://github.com/open-telemetry/opentelemetry-rust/blob/043e4b7523f66e79338ada84e7ab2da53251d448/opentelemetry-api/src/trace/context.rs#L261-L266
-                state.tracer.build(
-                    SpanBuilder::from_name("job")
-                        .with_trace_id(TraceId::from_bytes(*pipeline.id.as_bytes()))
-                        .with_span_id(SpanId::from_bytes(*array_ref!(job.id.as_bytes(), 0, 8)))
-                        .with_start_time(job.started_at)
-                        .with_end_time(stopped_at),
-                );
-            }
-        }
+                        structs::WebhookPayload::JobCompleted {
+                            happened_at,
+                            pipeline,
+                            webhook,
+                            organization,
+                            workflow,
+                            project,
+                            id,
+                            job,
+                        } => {
+                            if let Some(stopped_at) = job.stopped_at {
+                                // TODO: try to wedge in the parent span_id from the workflow. Apparently this would require a Context that holds the actual parent span. This sounds too complicated for now. See https://github.com/open-telemetry/opentelemetry-rust/blob/043e4b7523f66e79338ada84e7ab2da53251d448/opentelemetry-api/src/trace/context.rs#L261-L266
+                                state.tracer.build(
+                                    SpanBuilder::from_name("job")
+                                        .with_trace_id(TraceId::from_bytes(*pipeline.id.as_bytes()))
+                                        .with_span_id(SpanId::from_bytes(*array_ref!(
+                                            job.id.as_bytes(),
+                                            0,
+                                            8
+                                        )))
+                                        .with_start_time(job.started_at)
+                                        .with_end_time(stopped_at),
+                                );
+                            }
+                        }
 
-        structs::WebhookPayload::WorkflowCompleted {
-            id,
-            happened_at,
-            webhook,
-            workflow,
-            pipeline,
-            project,
-            organization,
-        } => {
-            if let Some(stopped_at) = workflow.stopped_at {
-                state.tracer.build(
-                    SpanBuilder::from_name("workflow")
-                        .with_trace_id(TraceId::from_bytes(*pipeline.id.as_bytes()))
-                        .with_span_id(SpanId::from_bytes(*array_ref!(
-                            pipeline.id.as_bytes(),
-                            0,
-                            8
-                        )))
-                        .with_start_time(workflow.created_at)
-                        .with_end_time(stopped_at),
-                );
+                        structs::WebhookPayload::WorkflowCompleted {
+                            id,
+                            happened_at,
+                            webhook,
+                            workflow,
+                            pipeline,
+                            project,
+                            organization,
+                        } => {
+                            if let Some(stopped_at) = workflow.stopped_at {
+                                state.tracer.build(
+                                    SpanBuilder::from_name("workflow")
+                                        .with_trace_id(TraceId::from_bytes(*pipeline.id.as_bytes()))
+                                        .with_span_id(SpanId::from_bytes(*array_ref!(
+                                            pipeline.id.as_bytes(),
+                                            0,
+                                            8
+                                        )))
+                                        .with_start_time(workflow.created_at)
+                                        .with_end_time(stopped_at),
+                                );
+                            }
+                        }
+                    },
+                    Err(_) => todo!("JSON decode error handling"),
+                }
+                return "Success!";
             }
         }
     }
 
-    "Success!"
+    todo!("signature verification failure handling")
 }

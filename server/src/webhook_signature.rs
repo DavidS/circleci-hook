@@ -1,25 +1,58 @@
-use axum::{
-    http::{Request, StatusCode},
-    middleware::Next,
-    response::Response,
-};
+use hmac::{digest::FixedOutput, Hmac, Mac};
+use sha2::Sha256;
+use subtle::ConstantTimeEq;
 
-pub async fn validate_circleci_signature<B>(
-    req: Request<B>,
-    next: Next<B>,
-) -> Result<Response, StatusCode> {
-    let auth_header = req
-        .headers()
-        .get("circleci-signature")
-        .and_then(|header| header.to_str().ok());
+// Create alias for HMAC-SHA256
+type HmacSha256 = Hmac<Sha256>;
 
-    match auth_header {
-        Some(auth_header) if get_signature_hash(auth_header).is_some() => Ok(next.run(req).await),
-        _ => Err(StatusCode::UNAUTHORIZED),
+pub fn verify_signature(body: &[u8], key: &[u8], signature_hex: String) -> bool {
+    let signature = hex::decode(signature_hex).expect("Decoding failed");
+    println!(
+        "VERIFYING: body={:?}, key={:?}, signature={:?}",
+        body, key, signature
+    );
+    let mut mac = HmacSha256::new_from_slice(key).expect("HMAC can take key of any size");
+    mac.update(body);
+    let result = mac.finalize_fixed();
+    if result.ct_eq(&signature).into() {
+        println!("SUCCESS!");
+        return true;
+    }
+    println!("FAILED: {:?}", result);
+    return false;
+}
+
+#[cfg(test)]
+mod verification_tests {
+    // examples from the circleci docs:
+    // Body	Secret Key	Signature
+    // hello world	secret	734cc62f32841568f45715aeb9f4d7891324e6d948e4c6c60c0621cdac48623a
+    // lalala	another-secret	daa220016c8f29a8b214fbfc3671aeec2145cfb1e6790184ffb38b6d0425fa00
+    // an-important-request-payload	hunter123	9be2242094a9a8c00c64306f382a7f9d691de910b4a266f67bd314ef18ac49fa
+
+    use super::verify_signature;
+
+    #[test]
+    fn test_hashes() {
+        assert!(verify_signature(
+            b"hello world",
+            b"secret",
+            "734cc62f32841568f45715aeb9f4d7891324e6d948e4c6c60c0621cdac48623a".to_string()
+        ));
+        assert!(verify_signature(
+            b"lalala",
+            b"another-secret",
+            "daa220016c8f29a8b214fbfc3671aeec2145cfb1e6790184ffb38b6d0425fa00".to_string()
+        ));
+        assert!(verify_signature(
+            b"an-important-request-payload",
+            b"hunter123",
+            "9be2242094a9a8c00c64306f382a7f9d691de910b4a266f67bd314ef18ac49fa".to_string()
+        ));
     }
 }
 
-fn get_signature_hash<'a>(header_value: &str) -> Option<String> {
+pub fn get_signature_hash<'a>(header_value: &str) -> Option<String> {
     for signature in header_value.split(",") {
         let splits: Vec<&str> = signature.split("=").collect();
         if splits.len() != 2 {
@@ -39,8 +72,8 @@ fn get_signature_hash<'a>(header_value: &str) -> Option<String> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{get_signature_hash};
+mod parse_tests {
+    use super::get_signature_hash;
 
     #[test]
     fn test_empty() {
