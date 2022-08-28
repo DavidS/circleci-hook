@@ -2,6 +2,7 @@ use arrayref::array_ref;
 use axum::{
     extract::State,
     http::StatusCode,
+    middleware,
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
@@ -17,8 +18,13 @@ use opentelemetry_otlp::{Protocol, WithExportConfig};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 // use tonic::{metadata::MetadataMap, transport::ClientTlsConfig};
+use tower::ServiceBuilder;
+use tower_http::trace::TraceLayer;
+
+use crate::webhook_signature::validate_circleci_signature;
 
 mod structs;
+mod webhook_signature;
 
 #[derive(Clone)]
 struct AppState {
@@ -38,12 +44,10 @@ async fn main() {
     let tracer = opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(
-            opentelemetry_otlp::new_exporter()
-                .tonic()
-                // .with_endpoint(env!("OTEL_EXPORTER_OTLP_ENDPOINT"))
-                // .with_env()
-                // .with_tls_config(ClientTlsConfig::new())
-                // .with_metadata(map),
+            opentelemetry_otlp::new_exporter().tonic(), // .with_endpoint(env!("OTEL_EXPORTER_OTLP_ENDPOINT"))
+                                                        // .with_env()
+                                                        // .with_tls_config(ClientTlsConfig::new())
+                                                        // .with_metadata(map),
         )
         .with_trace_config(
             sdktrace::config().with_resource(Resource::new(vec![KeyValue::new(
@@ -58,7 +62,12 @@ async fn main() {
 
     let app = Router::with_state(state)
         .route("/", get(root))
-        .route("/", post(hook_handler));
+        .route("/", post(hook_handler))
+        .layer(
+            ServiceBuilder::new()
+                .layer(TraceLayer::new_for_http())
+                .layer(middleware::from_fn(validate_circleci_signature)),
+        );
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::info!("listening on {}", addr);
