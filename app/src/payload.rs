@@ -141,11 +141,12 @@ impl WebhookPayload {
                             .with_end_time(stopped_at)
                             .with_attributes(
                                 [
-                                    webhook.to_kv(),
                                     organization.to_kv(),
-                                    workflow.to_kv(),
-                                    pipeline.to_kv(),
                                     project.to_kv(),
+                                    pipeline.to_kv(),
+                                    webhook.to_kv(),
+                                    workflow.to_kv(),
+                                    job.to_kv(),
                                 ]
                                 .concat(),
                             ),
@@ -173,11 +174,11 @@ impl WebhookPayload {
                             .with_end_time(stopped_at)
                             .with_attributes(
                                 [
-                                    webhook.to_kv(),
                                     organization.to_kv(),
-                                    workflow.to_kv(),
-                                    pipeline.to_kv(),
                                     project.to_kv(),
+                                    pipeline.to_kv(),
+                                    webhook.to_kv(),
+                                    workflow.to_kv(),
                                 ]
                                 .concat(),
                             ),
@@ -273,6 +274,27 @@ impl Workflow {
 impl Job {
     fn span_id(self: &Self) -> SpanId {
         SpanId::from_bytes(*array_ref!(self.id.as_bytes(), 0, 8))
+    }
+
+    fn to_kv(self: &Self) -> Vec<KeyValue> {
+        vec![
+            KeyValue {
+                key: Key::new("circleci.job.id"),
+                value: Value::String(format!("{}", self.id.urn()).into()),
+            },
+            KeyValue {
+                key: Key::new("circleci.job.name"),
+                value: Value::String(Cow::from(self.name.clone())),
+            },
+            KeyValue {
+                key: Key::new("circleci.job.number"),
+                value: Value::I64(self.number),
+            },
+            KeyValue {
+                key: Key::new("circleci.job.status"),
+                value: Value::String(Cow::from(self.status.clone())),
+            },
+        ]
     }
 }
 
