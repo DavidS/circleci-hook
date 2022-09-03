@@ -76,10 +76,7 @@ pub fn build_hook_result_span(payload: &WebhookPayload, tracer: &Tracer) {
         } => {
             if let Some(stopped_at) = job.stopped_at {
                 info!("Processing JobCompleted");
-                // TODO: try to wedge in the parent span_id from the workflow. Apparently this would require a Context that holds the actual parent span. This sounds too complicated for now. See https://github.com/open-telemetry/opentelemetry-rust/blob/043e4b7523f66e79338ada84e7ab2da53251d448/opentelemetry-api/src/trace/context.rs#L261-L266
                 let cx = create_workflow_context(pipeline.id);
-                // debug!("{:#?}", cx.span());
-                // debug!("{:#?}", cx.span().span_context());
                 tracer.build_with_context(
                     SpanBuilder::from_name("job")
                         .with_span_id(span_id_from_job_id(&job.id))
