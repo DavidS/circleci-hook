@@ -165,8 +165,8 @@ async fn hook_handler(
                                 println!("Processing JobCompleted");
                                 // TODO: try to wedge in the parent span_id from the workflow. Apparently this would require a Context that holds the actual parent span. This sounds too complicated for now. See https://github.com/open-telemetry/opentelemetry-rust/blob/043e4b7523f66e79338ada84e7ab2da53251d448/opentelemetry-api/src/trace/context.rs#L261-L266
                                 let cx = create_workflow_context(pipeline.id);
-                                println!("{:#?}", cx.span());
-                                println!("{:#?}", cx.span().span_context());
+                                // println!("{:#?}", cx.span());
+                                // println!("{:#?}", cx.span().span_context());
                                 state.tracer.build_with_context(
                                     SpanBuilder::from_name("job")
                                         .with_span_id(SpanId::from_bytes(*array_ref!(
