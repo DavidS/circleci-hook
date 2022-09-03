@@ -1,24 +1,25 @@
 use hmac::{digest::FixedOutput, Hmac, Mac};
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
+use tracing::{debug, warn};
 
 // Create alias for HMAC-SHA256
 type HmacSha256 = Hmac<Sha256>;
 
 pub fn verify_signature(body: &[u8], key: &[u8], signature_hex: String) -> bool {
     let signature = hex::decode(signature_hex).expect("Decoding failed");
-    // println!(
-    //     "VERIFYING: body={:?}, key={:?}, signature={:?}",
-    //     body, key, signature
-    // );
+    debug!(
+        "VERIFYING: body={:?}, key={:?}, signature={:?}",
+        body, key, signature
+    );
     let mut mac = HmacSha256::new_from_slice(key).expect("HMAC can take key of any size");
     mac.update(body);
     let result = mac.finalize_fixed();
     if result.ct_eq(&signature).into() {
-        // println!("SUCCESS!");
+        // debug!("SUCCESS!");
         return true;
     }
-    println!("FAILED signature verification: {:?}", result);
+    warn!("FAILED signature verification: {:?}", result);
     return false;
 }
 
@@ -56,7 +57,7 @@ pub fn parse_signature_header<'a>(header_value: &str) -> Option<String> {
     for signature in header_value.split(",") {
         let splits: Vec<&str> = signature.split("=").collect();
         if splits.len() != 2 {
-            println!(
+            warn!(
                 "Invalid header `{}`, does contain {} parts!",
                 header_value,
                 splits.len()
@@ -82,7 +83,10 @@ mod parse_tests {
 
     #[test]
     fn test_only_v1_signature() {
-        assert_eq!(parse_signature_header("v1=foobar"), Some("foobar".to_string()));
+        assert_eq!(
+            parse_signature_header("v1=foobar"),
+            Some("foobar".to_string())
+        );
     }
 
     #[test]

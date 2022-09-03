@@ -13,8 +13,9 @@ use opentelemetry::{
 use std::net::SocketAddr;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
+use tracing::{debug, info, instrument};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct AppState {
     tracer: sdktrace::Tracer,
 }
@@ -58,7 +59,7 @@ async fn main() {
         );
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::info!("listening on {}", addr);
+    info!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
@@ -70,16 +71,17 @@ async fn root() -> &'static str {
 }
 
 // async fn hook_handler(Json(payload): Json<serde_json::Value>) -> &'static str {
-//     println!("{:#?}", payload);
+//     debug!("{:#?}", payload);
 //     "Hello, Mikey and backendsouls!"
 // }
 
+#[instrument]
 async fn hook_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
     body: Bytes,
 ) -> &'static str {
-    println!("Received request");
+    debug!("Received request");
     return handle_hook(
         header_value_from_map(&headers),
         Some("FOOBAR"),

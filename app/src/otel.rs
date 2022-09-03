@@ -2,11 +2,12 @@ use arrayref::array_ref;
 use opentelemetry::{
     sdk::trace::Tracer,
     trace::{
-        SpanContext, SpanId, TraceContextExt, TraceFlags, TraceId, TraceState,
-        Tracer as TracerTrait, SpanBuilder,
+        SpanBuilder, SpanContext, SpanId, TraceContextExt, TraceFlags, TraceId, TraceState,
+        Tracer as TracerTrait,
     },
     Context,
 };
+use tracing::info;
 use uuid::Uuid;
 
 use crate::structs::WebhookPayload;
@@ -54,6 +55,7 @@ pub fn build_hook_result_span(payload: &WebhookPayload, tracer: &Tracer) {
             id,
             webhook,
         } => {
+            info!("Processing PingEvent");
             tracer.build(
                 SpanBuilder::from_name("ping")
                     .with_trace_id(TraceId::from_bytes(*id.as_bytes()))
@@ -73,11 +75,11 @@ pub fn build_hook_result_span(payload: &WebhookPayload, tracer: &Tracer) {
             job,
         } => {
             if let Some(stopped_at) = job.stopped_at {
-                println!("Processing JobCompleted");
+                info!("Processing JobCompleted");
                 // TODO: try to wedge in the parent span_id from the workflow. Apparently this would require a Context that holds the actual parent span. This sounds too complicated for now. See https://github.com/open-telemetry/opentelemetry-rust/blob/043e4b7523f66e79338ada84e7ab2da53251d448/opentelemetry-api/src/trace/context.rs#L261-L266
                 let cx = create_workflow_context(pipeline.id);
-                // println!("{:#?}", cx.span());
-                // println!("{:#?}", cx.span().span_context());
+                // debug!("{:#?}", cx.span());
+                // debug!("{:#?}", cx.span().span_context());
                 tracer.build_with_context(
                     SpanBuilder::from_name("job")
                         .with_span_id(span_id_from_job_id(&job.id))
@@ -98,7 +100,7 @@ pub fn build_hook_result_span(payload: &WebhookPayload, tracer: &Tracer) {
             organization,
         } => {
             if let Some(stopped_at) = workflow.stopped_at {
-                println!("Processing WorkflowCompleted");
+                info!("Processing WorkflowCompleted");
                 tracer.build(
                     SpanBuilder::from_name("workflow")
                         .with_trace_id(trace_id_from_pipeline_id(&pipeline.id))
