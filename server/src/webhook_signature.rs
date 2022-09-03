@@ -7,18 +7,18 @@ type HmacSha256 = Hmac<Sha256>;
 
 pub fn verify_signature(body: &[u8], key: &[u8], signature_hex: String) -> bool {
     let signature = hex::decode(signature_hex).expect("Decoding failed");
-    println!(
-        "VERIFYING: body={:?}, key={:?}, signature={:?}",
-        body, key, signature
-    );
+    // println!(
+    //     "VERIFYING: body={:?}, key={:?}, signature={:?}",
+    //     body, key, signature
+    // );
     let mut mac = HmacSha256::new_from_slice(key).expect("HMAC can take key of any size");
     mac.update(body);
     let result = mac.finalize_fixed();
     if result.ct_eq(&signature).into() {
-        println!("SUCCESS!");
+        // println!("SUCCESS!");
         return true;
     }
-    println!("FAILED: {:?}", result);
+    println!("FAILED signature verification: {:?}", result);
     return false;
 }
 

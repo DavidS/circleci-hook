@@ -104,10 +104,23 @@ fn create_workflow_context(pipeline_id: Uuid) -> Context {
     return cx.with_remote_span_context(SpanContext::new(
         trace_id_from_pipeline_id(&pipeline_id),
         workflow_span_id_from_pipeline_id(&pipeline_id),
-        TraceFlags::default(),
+        TraceFlags::SAMPLED,
         false,
         TraceState::default(),
     ));
+}
+
+#[cfg(test)]
+mod cx_tests {
+    use opentelemetry::trace::TraceContextExt;
+    use uuid::Uuid;
+
+    use super::create_workflow_context;
+
+    #[test]
+    fn test_has_active_span() {
+        assert!(create_workflow_context(Uuid::new_v4()).has_active_span());
+    }
 }
 
 async fn hook_handler(
@@ -149,8 +162,11 @@ async fn hook_handler(
                             job,
                         } => {
                             if let Some(stopped_at) = job.stopped_at {
+                                println!("Processing JobCompleted");
                                 // TODO: try to wedge in the parent span_id from the workflow. Apparently this would require a Context that holds the actual parent span. This sounds too complicated for now. See https://github.com/open-telemetry/opentelemetry-rust/blob/043e4b7523f66e79338ada84e7ab2da53251d448/opentelemetry-api/src/trace/context.rs#L261-L266
                                 let cx = create_workflow_context(pipeline.id);
+                                println!("{:#?}", cx.span());
+                                println!("{:#?}", cx.span().span_context());
                                 state.tracer.build_with_context(
                                     SpanBuilder::from_name("job")
                                         .with_span_id(SpanId::from_bytes(*array_ref!(
@@ -175,6 +191,7 @@ async fn hook_handler(
                             organization,
                         } => {
                             if let Some(stopped_at) = workflow.stopped_at {
+                                println!("Processing WorkflowCompleted");
                                 state.tracer.build(
                                     SpanBuilder::from_name("workflow")
                                         .with_trace_id(trace_id_from_pipeline_id(&pipeline.id))
