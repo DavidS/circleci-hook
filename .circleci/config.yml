@@ -1,4 +1,14 @@
-version: '2.1'
+version: "2.1"
+
+# Define the jobs we want to run for this project
+jobs:
+  test:
+    docker:
+      - image: cimg/ruby:latest
+    steps:
+      - checkout
+      - run: echo "this is the test job"
+      - run: sleep 10
 
 # this pipeline is impacted by https://github.com/CircleCI-Public/rust-orb/issues/18 and the fact
 # that the orb doesn't support workspaces. Luckily we only need it for testing webhook delivery.
@@ -9,3 +19,4 @@ workflows:
     jobs:
       - rust/lint-test-build:
           version: "1.63.0"
+      - test: {}
