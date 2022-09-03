@@ -5,11 +5,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use circleci_hook_app::{
-    otel::build_hook_result_span,
-    signatures::{parse_signature_header, verify_signature},
-    structs::WebhookPayload,
-};
+use circleci_hook_app::{handle_hook, header_value_from_map};
 use opentelemetry::{
     sdk::{trace as sdktrace, Resource},
     KeyValue,
@@ -84,21 +80,11 @@ async fn hook_handler(
     body: Bytes,
 ) -> &'static str {
     println!("Received request");
-    if let Some(header_value) = headers
-        .get("circleci-signature")
-        .and_then(|header| header.to_str().ok())
-    {
-        if let Some(signature_hex) = parse_signature_header(header_value) {
-            if verify_signature(body.as_ref(), b"FOOBAR", signature_hex) {
-                let payload = serde_json::from_slice::<WebhookPayload>(body.as_ref());
-                match payload {
-                    Ok(payload) => build_hook_result_span(&payload, &state.tracer),
-                    Err(_) => todo!("JSON decode error handling"),
-                }
-                return "Success!";
-            }
-        }
-    }
-
-    todo!("signature verification failure handling")
+    return handle_hook(
+        header_value_from_map(&headers),
+        Some("FOOBAR"),
+        body.as_ref(),
+        &state.tracer,
+    )
+    .await;
 }
