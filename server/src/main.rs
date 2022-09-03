@@ -2,16 +2,15 @@ use arrayref::array_ref;
 use axum::{
     body::Bytes,
     extract::State,
-    http::{HeaderMap, StatusCode},
-    middleware,
-    response::IntoResponse,
+    http::HeaderMap,
     routing::{get, post},
-    Json, Router,
+    Router,
 };
-use circleci_hook_app::signatures::{parse_signature_header, verify_signature};
+use circleci_hook_app::{
+    signatures::{parse_signature_header, verify_signature},
+    structs::WebhookPayload,
+};
 use opentelemetry::{
-    global,
-    sdk::export::trace::stdout,
     sdk::{trace as sdktrace, Resource},
     trace::{
         SpanBuilder, SpanContext, SpanId, TraceContextExt, TraceFlags, TraceId, TraceState,
@@ -19,15 +18,10 @@ use opentelemetry::{
     },
     Context, KeyValue,
 };
-use opentelemetry_otlp::{Protocol, WithExportConfig};
-use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
-use uuid::Uuid;
-// use tonic::{metadata::MetadataMap, transport::ClientTlsConfig};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
-
-mod structs;
+use uuid::Uuid;
 
 #[derive(Clone)]
 struct AppState {
@@ -133,10 +127,10 @@ async fn hook_handler(
     {
         if let Some(signature_hex) = parse_signature_header(header_value) {
             if verify_signature(body.as_ref(), b"FOOBAR", signature_hex) {
-                let payload = serde_json::from_slice::<structs::WebhookPayload>(body.as_ref());
+                let payload = serde_json::from_slice::<WebhookPayload>(body.as_ref());
                 match payload {
                     Ok(payload) => match payload {
-                        structs::WebhookPayload::PingEvent {
+                        WebhookPayload::PingEvent {
                             happened_at,
                             id,
                             webhook,
@@ -149,7 +143,7 @@ async fn hook_handler(
                             );
                         }
 
-                        structs::WebhookPayload::JobCompleted {
+                        WebhookPayload::JobCompleted {
                             happened_at,
                             pipeline,
                             webhook,
@@ -179,7 +173,7 @@ async fn hook_handler(
                             }
                         }
 
-                        structs::WebhookPayload::WorkflowCompleted {
+                        WebhookPayload::WorkflowCompleted {
                             id,
                             happened_at,
                             webhook,

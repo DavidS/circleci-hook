@@ -5,3 +5,4 @@
 * better logging than println!
 * configure direct export to honeycomb, instead of going through the collector
 * create a container for running the hook somewhere/anywhere
+* Fully implement the entire schema in structs; remove serde_json::Value and dependency
