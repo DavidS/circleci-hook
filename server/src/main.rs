@@ -12,12 +12,16 @@ use opentelemetry::{
     global,
     sdk::export::trace::stdout,
     sdk::{trace as sdktrace, Resource},
-    trace::{SpanBuilder, SpanId, TraceId, Tracer as OtherTracer},
-    KeyValue,
+    trace::{
+        SpanBuilder, SpanContext, SpanId, TraceContextExt, TraceFlags, TraceId, TraceState,
+        Tracer as OtherTracer,
+    },
+    Context, KeyValue,
 };
 use opentelemetry_otlp::{Protocol, WithExportConfig};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
+use uuid::Uuid;
 // use tonic::{metadata::MetadataMap, transport::ClientTlsConfig};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
@@ -87,6 +91,25 @@ async fn root() -> &'static str {
 //     "Hello, Mikey and backendsouls!"
 // }
 
+fn trace_id_from_pipeline_id(pipeline_id: &Uuid) -> TraceId {
+    TraceId::from_bytes(*pipeline_id.as_bytes())
+}
+
+fn workflow_span_id_from_pipeline_id(pipeline_id: &Uuid) -> SpanId {
+    SpanId::from_bytes(*array_ref!(pipeline_id.as_bytes(), 0, 8))
+}
+
+fn create_workflow_context(pipeline_id: Uuid) -> Context {
+    let cx = Context::current();
+    return cx.with_remote_span_context(SpanContext::new(
+        trace_id_from_pipeline_id(&pipeline_id),
+        workflow_span_id_from_pipeline_id(&pipeline_id),
+        TraceFlags::default(),
+        false,
+        TraceState::default(),
+    ));
+}
+
 async fn hook_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -127,9 +150,9 @@ async fn hook_handler(
                         } => {
                             if let Some(stopped_at) = job.stopped_at {
                                 // TODO: try to wedge in the parent span_id from the workflow. Apparently this would require a Context that holds the actual parent span. This sounds too complicated for now. See https://github.com/open-telemetry/opentelemetry-rust/blob/043e4b7523f66e79338ada84e7ab2da53251d448/opentelemetry-api/src/trace/context.rs#L261-L266
-                                state.tracer.build(
+                                let cx = create_workflow_context(pipeline.id);
+                                state.tracer.build_with_context(
                                     SpanBuilder::from_name("job")
-                                        .with_trace_id(TraceId::from_bytes(*pipeline.id.as_bytes()))
                                         .with_span_id(SpanId::from_bytes(*array_ref!(
                                             job.id.as_bytes(),
                                             0,
@@ -137,6 +160,7 @@ async fn hook_handler(
                                         )))
                                         .with_start_time(job.started_at)
                                         .with_end_time(stopped_at),
+                                    &cx,
                                 );
                             }
                         }
@@ -153,12 +177,10 @@ async fn hook_handler(
                             if let Some(stopped_at) = workflow.stopped_at {
                                 state.tracer.build(
                                     SpanBuilder::from_name("workflow")
-                                        .with_trace_id(TraceId::from_bytes(*pipeline.id.as_bytes()))
-                                        .with_span_id(SpanId::from_bytes(*array_ref!(
-                                            pipeline.id.as_bytes(),
-                                            0,
-                                            8
-                                        )))
+                                        .with_trace_id(trace_id_from_pipeline_id(&pipeline.id))
+                                        .with_span_id(workflow_span_id_from_pipeline_id(
+                                            &pipeline.id,
+                                        ))
                                         .with_start_time(workflow.created_at)
                                         .with_end_time(stopped_at),
                                 );
