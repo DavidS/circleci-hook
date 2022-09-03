@@ -8,6 +8,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use circleci_hook_app::signatures::{parse_signature_header, verify_signature};
 use opentelemetry::{
     global,
     sdk::export::trace::stdout,
@@ -26,10 +27,7 @@ use uuid::Uuid;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
-use crate::webhook_signature::{get_signature_hash, verify_signature};
-
 mod structs;
-mod webhook_signature;
 
 #[derive(Clone)]
 struct AppState {
@@ -129,12 +127,12 @@ async fn hook_handler(
     body: Bytes,
 ) -> &'static str {
     println!("Received request");
-    if let Some(auth_header) = headers
+    if let Some(header_value) = headers
         .get("circleci-signature")
         .and_then(|header| header.to_str().ok())
     {
-        if let Some(signature_hash) = get_signature_hash(auth_header) {
-            if verify_signature(body.as_ref(), b"FOOBAR", signature_hash) {
+        if let Some(signature_hex) = parse_signature_header(header_value) {
+            if verify_signature(body.as_ref(), b"FOOBAR", signature_hex) {
                 let payload = serde_json::from_slice::<structs::WebhookPayload>(body.as_ref());
                 match payload {
                     Ok(payload) => match payload {

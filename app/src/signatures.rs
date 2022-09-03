@@ -52,7 +52,7 @@ mod verification_tests {
     }
 }
 
-pub fn get_signature_hash<'a>(header_value: &str) -> Option<String> {
+pub fn parse_signature_header<'a>(header_value: &str) -> Option<String> {
     for signature in header_value.split(",") {
         let splits: Vec<&str> = signature.split("=").collect();
         if splits.len() != 2 {
@@ -73,22 +73,22 @@ pub fn get_signature_hash<'a>(header_value: &str) -> Option<String> {
 
 #[cfg(test)]
 mod parse_tests {
-    use super::get_signature_hash;
+    use super::parse_signature_header;
 
     #[test]
     fn test_empty() {
-        assert_eq!(get_signature_hash(""), None);
+        assert_eq!(parse_signature_header(""), None);
     }
 
     #[test]
     fn test_only_v1_signature() {
-        assert_eq!(get_signature_hash("v1=foobar"), Some("foobar".to_string()));
+        assert_eq!(parse_signature_header("v1=foobar"), Some("foobar".to_string()));
     }
 
     #[test]
     fn test_multiple_signatures() {
         assert_eq!(
-            get_signature_hash("v1=foobar,v2=wibble"),
+            parse_signature_header("v1=foobar,v2=wibble"),
             Some("foobar".to_string())
         );
     }
