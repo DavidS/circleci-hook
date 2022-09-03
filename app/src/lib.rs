@@ -2,11 +2,10 @@ use http::HeaderMap;
 use opentelemetry::sdk::trace::Tracer;
 use signatures::{parse_signature_header, verify_signature};
 
-use crate::{otel::build_hook_result_span, structs::WebhookPayload};
+use crate::payload::WebhookPayload;
 
-pub mod otel;
 pub mod signatures;
-pub mod structs;
+pub mod payload;
 
 pub fn header_value_from_map(headers: &HeaderMap) -> Option<&str> {
     headers
@@ -32,10 +31,12 @@ pub async fn handle_hook(
         }
     }
 
-    let payload = serde_json::from_slice::<WebhookPayload>(body.as_ref());
-    match payload {
-        Ok(payload) => build_hook_result_span(&payload, tracer),
-        Err(_) => todo!("JSON decode error handling"),
+    if serde_json::from_slice::<WebhookPayload>(body.as_ref())
+        .and_then(|payload| Ok(payload.build_span(tracer)))
+        .is_ok()
+    {
+        return "Success!";
+    } else {
+        todo!("Error handling")
     }
-    return "Success!";
 }

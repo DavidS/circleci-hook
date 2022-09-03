@@ -1,10 +1,22 @@
+use std::borrow::Cow;
+
+use arrayref::array_ref;
 use chrono::{DateTime, FixedOffset};
+use opentelemetry::{
+    sdk::trace::Tracer,
+    trace::{
+        SpanBuilder, SpanContext, SpanId, TraceContextExt, TraceFlags, TraceId, TraceState,
+        Tracer as TracerTrait,
+    },
+    Context, Key, KeyValue, Value,
+};
 use serde::Deserialize;
+use tracing::{debug, info};
 use uuid::Uuid;
 
 #[derive(Deserialize, Debug)]
 pub struct Organization {
-    pub id: String,
+    pub id: Uuid,
     pub name: String,
 }
 // TODO: complete full deserialisation here
@@ -18,7 +30,7 @@ pub struct Organization {
 //     revision: String,
 //     target_repository_url: String,
 // }
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Pipeline {
     pub created_at: DateTime<FixedOffset>,
     pub id: Uuid,
@@ -64,31 +76,238 @@ pub struct Job {
 pub enum WebhookPayload {
     #[serde(rename = "ping")]
     PingEvent {
-        happened_at: DateTime<FixedOffset>,
         id: Uuid,
+        happened_at: DateTime<FixedOffset>,
         webhook: Webhook,
     },
     #[serde(rename = "workflow-completed")]
     WorkflowCompleted {
         id: Uuid,
         happened_at: String,
+        organization: Organization,
+        project: Project,
+        pipeline: Pipeline,
         webhook: Webhook,
         workflow: Workflow,
-        pipeline: Pipeline,
-        project: Project,
-        organization: Organization,
     },
     #[serde(rename = "job-completed")]
     JobCompleted {
+        id: Uuid,
         happened_at: String,
+        organization: Organization,
+        project: Project,
         pipeline: Pipeline,
         webhook: Webhook,
-        organization: Organization,
         workflow: Workflow,
-        project: Project,
-        id: Uuid,
         job: Job,
     },
+}
+
+impl WebhookPayload {
+    pub fn build_span(self: &Self, tracer: &Tracer) {
+        match self {
+            WebhookPayload::PingEvent {
+                id,
+                happened_at,
+                webhook,
+            } => {
+                info!("Processing PingEvent");
+                tracer.build(
+                    SpanBuilder::from_name("ping")
+                        .with_trace_id(TraceId::from_bytes(*id.as_bytes()))
+                        .with_start_time(*happened_at)
+                        .with_end_time(*happened_at)
+                        .with_attributes([webhook.to_kv()].concat()),
+                );
+            }
+
+            WebhookPayload::JobCompleted {
+                id,
+                happened_at,
+                organization,
+                project,
+                pipeline,
+                webhook,
+                workflow,
+                job,
+            } => {
+                if let Some(stopped_at) = job.stopped_at {
+                    debug!("pipeline: {:#?}", pipeline);
+                    info!("Processing JobCompleted");
+                    tracer.build_with_context(
+                        SpanBuilder::from_name("job")
+                            .with_span_id(job.span_id())
+                            .with_start_time(job.started_at)
+                            .with_end_time(stopped_at)
+                            .with_attributes(
+                                [
+                                    webhook.to_kv(),
+                                    organization.to_kv(),
+                                    workflow.to_kv(),
+                                    pipeline.to_kv(),
+                                    project.to_kv(),
+                                ]
+                                .concat(),
+                            ),
+                        &pipeline.workflow_context(),
+                    );
+                }
+            }
+
+            WebhookPayload::WorkflowCompleted {
+                id,
+                happened_at,
+                organization,
+                project,
+                pipeline,
+                webhook,
+                workflow,
+            } => {
+                if let Some(stopped_at) = workflow.stopped_at {
+                    info!("Processing WorkflowCompleted");
+                    tracer.build(
+                        SpanBuilder::from_name("workflow")
+                            .with_trace_id(pipeline.trace_id())
+                            .with_span_id(pipeline.workflow_span_id())
+                            .with_start_time(workflow.created_at)
+                            .with_end_time(stopped_at)
+                            .with_attributes(
+                                [
+                                    webhook.to_kv(),
+                                    organization.to_kv(),
+                                    workflow.to_kv(),
+                                    pipeline.to_kv(),
+                                    project.to_kv(),
+                                ]
+                                .concat(),
+                            ),
+                    );
+                }
+            }
+        }
+    }
+}
+
+impl Webhook {
+    fn to_kv(self: &Self) -> Vec<KeyValue> {
+        return vec![KeyValue {
+            key: Key::new("circleci.webhook.id"),
+            value: Value::String(format!("{}", self.id.urn()).into()),
+        }];
+    }
+}
+
+impl Pipeline {
+    fn trace_id(self: &Self) -> TraceId {
+        TraceId::from_bytes(*self.id.as_bytes())
+    }
+
+    fn workflow_span_id(self: &Self) -> SpanId {
+        SpanId::from_bytes(*array_ref!(self.id.as_bytes(), 0, 8))
+    }
+
+    fn workflow_context(self: &Self) -> Context {
+        let cx = Context::current();
+        return cx.with_remote_span_context(SpanContext::new(
+            self.trace_id(),
+            self.workflow_span_id(),
+            TraceFlags::SAMPLED,
+            false,
+            TraceState::default(),
+        ));
+    }
+
+    fn to_kv(self: &Self) -> Vec<KeyValue> {
+        return vec![
+            KeyValue {
+                key: Key::new("circleci.pipeline.id"),
+                value: Value::String(format!("{}", self.id.urn()).into()),
+            },
+            KeyValue {
+                key: Key::new("circleci.pipeline.number"),
+                value: Value::I64(self.number),
+            },
+        ];
+    }
+}
+
+#[cfg(test)]
+mod pipeline_tests {
+    use opentelemetry::trace::TraceContextExt;
+
+    use super::Pipeline;
+
+    #[test]
+    fn test_has_active_span() {
+        let p = Pipeline::default();
+        assert!(p.workflow_context().has_active_span());
+    }
+}
+
+impl Workflow {
+    fn to_kv(self: &Self) -> Vec<KeyValue> {
+        let mut result = vec![
+            KeyValue {
+                key: Key::new("circleci.workflow.id"),
+                value: Value::String(format!("{}", self.id.urn()).into()),
+            },
+            KeyValue {
+                key: Key::new("circleci.workflow.name"),
+                value: Value::String(Cow::from(self.name.clone())),
+            },
+            KeyValue {
+                key: Key::new("circleci.workflow.url"),
+                value: Value::String(Cow::from(self.url.clone())),
+            },
+        ];
+        if let Some(status) = &self.status {
+            result.push(KeyValue {
+                key: Key::new("circleci.workflow.status"),
+                value: Value::String(Cow::from(status.clone())),
+            });
+        }
+        result
+    }
+}
+
+impl Job {
+    fn span_id(self: &Self) -> SpanId {
+        SpanId::from_bytes(*array_ref!(self.id.as_bytes(), 0, 8))
+    }
+}
+
+impl Organization {
+    fn to_kv(self: &Self) -> Vec<KeyValue> {
+        return vec![
+            KeyValue {
+                key: Key::new("circleci.organization.id"),
+                value: Value::String(format!("{}", self.id.urn()).into()),
+            },
+            KeyValue {
+                key: Key::new("circleci.organization.name"),
+                value: Value::String(Cow::from(self.name.clone())),
+            },
+        ];
+    }
+}
+
+impl Project {
+    fn to_kv(self: &Self) -> Vec<KeyValue> {
+        return vec![
+            KeyValue {
+                key: Key::new("circleci.project.id"),
+                value: Value::String(format!("{}", self.id.urn()).into()),
+            },
+            KeyValue {
+                key: Key::new("circleci.project.name"),
+                value: Value::String(Cow::from(self.name.clone())),
+            },
+            KeyValue {
+                key: Key::new("circleci.project.slug"),
+                value: Value::String(Cow::from(self.slug.clone())),
+            },
+        ];
+    }
 }
 
 // Example webhook payload:
