@@ -4,7 +4,7 @@
 * improve data quality 
     * ☑️ capture job name
     * ☑️ capture other details
-    * make unique traceid/spanid for reruns of a pipeline
+    * ☑️ make unique traceid/spanid for reruns of a pipeline
 
 * configure direct export to honeycomb, instead of going through the collector
 * create a container for running the hook somewhere/anywhere
