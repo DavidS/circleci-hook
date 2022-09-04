@@ -97,7 +97,7 @@ impl WebhookPayload {
                                 ]
                                 .concat(),
                             ),
-                        &pipeline.workflow_context(),
+                        &workflow.context(),
                     );
                 }
             }
@@ -115,8 +115,8 @@ impl WebhookPayload {
                     info!("Processing WorkflowCompleted");
                     tracer.build(
                         SpanBuilder::from_name(format!("workflow: {}", workflow.name))
-                            .with_trace_id(pipeline.trace_id())
-                            .with_span_id(pipeline.workflow_span_id())
+                            .with_trace_id(workflow.trace_id())
+                            .with_span_id(workflow.span_id())
                             .with_start_time(workflow.created_at)
                             .with_end_time(stopped_at)
                             .with_attributes(
@@ -187,7 +187,7 @@ impl Project {
     }
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug)]
 pub struct Pipeline {
     pub created_at: DateTime<FixedOffset>,
     pub id: Uuid,
@@ -199,25 +199,6 @@ pub struct Pipeline {
 }
 
 impl Pipeline {
-    fn trace_id(self: &Self) -> TraceId {
-        TraceId::from_bytes(*self.id.as_bytes())
-    }
-
-    fn workflow_span_id(self: &Self) -> SpanId {
-        SpanId::from_bytes(*array_ref!(self.id.as_bytes(), 0, 8))
-    }
-
-    fn workflow_context(self: &Self) -> Context {
-        let cx = Context::current();
-        return cx.with_remote_span_context(SpanContext::new(
-            self.trace_id(),
-            self.workflow_span_id(),
-            TraceFlags::SAMPLED,
-            false,
-            TraceState::default(),
-        ));
-    }
-
     fn to_kv(self: &Self) -> Vec<KeyValue> {
         return vec![
             KeyValue {
@@ -229,19 +210,6 @@ impl Pipeline {
                 value: Value::I64(self.number),
             },
         ];
-    }
-}
-
-#[cfg(test)]
-mod pipeline_tests {
-    use opentelemetry::trace::TraceContextExt;
-
-    use super::Pipeline;
-
-    #[test]
-    fn test_has_active_span() {
-        let p = Pipeline::default();
-        assert!(p.workflow_context().has_active_span());
     }
 }
 
@@ -260,7 +228,7 @@ impl Webhook {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Workflow {
     pub created_at: DateTime<FixedOffset>,
     pub id: Uuid,
@@ -271,6 +239,25 @@ pub struct Workflow {
 }
 
 impl Workflow {
+    fn trace_id(self: &Self) -> TraceId {
+        TraceId::from_bytes(*self.id.as_bytes())
+    }
+
+    fn span_id(self: &Self) -> SpanId {
+        SpanId::from_bytes(*array_ref!(self.id.as_bytes(), 0, 8))
+    }
+
+    fn context(self: &Self) -> Context {
+        let cx = Context::current();
+        return cx.with_remote_span_context(SpanContext::new(
+            self.trace_id(),
+            self.span_id(),
+            TraceFlags::SAMPLED,
+            false,
+            TraceState::default(),
+        ));
+    }
+
     fn to_kv(self: &Self) -> Vec<KeyValue> {
         let mut result = vec![
             KeyValue {
@@ -293,6 +280,19 @@ impl Workflow {
             });
         }
         result
+    }
+}
+
+#[cfg(test)]
+mod workflow_tests {
+    use opentelemetry::trace::TraceContextExt;
+
+    use super::Workflow;
+
+    #[test]
+    fn test_has_active_span() {
+        let w = Workflow::default();
+        assert!(w.context().has_active_span());
     }
 }
 
