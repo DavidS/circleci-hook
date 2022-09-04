@@ -8,45 +8,83 @@ use axum::{
 use circleci_hook_app::{handle_hook, header_value_from_map};
 use opentelemetry::{
     sdk::{trace as sdktrace, Resource},
+    trace::TraceError,
     KeyValue,
 };
-use std::net::SocketAddr;
+use opentelemetry_otlp::WithExportConfig;
+use std::{env, net::SocketAddr, str::FromStr};
+use tonic::{
+    metadata::{MetadataKey, MetadataMap},
+    transport::ClientTlsConfig,
+};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing::{debug, info, instrument};
+use url::Url;
 
 #[derive(Clone, Debug)]
 struct AppState {
     tracer: sdktrace::Tracer,
 }
 
-#[tokio::main]
-async fn main() {
-    tracing_subscriber::fmt::init();
+const ENDPOINT: &str = "CIRCLECI_OTLP_ENDPOINT";
+const HEADER_PREFIX: &str = "CIRCLECI_OTLP_";
+const SECRET_TOKEN: &str = "CIRCLECI_HOOK_SECRET";
+const SERVICE_NAME: &str = "CIRCLECI_HOOK_SERVICE";
 
-    // let mut map = MetadataMap::new();
-    // map.insert(
-    //     "x-honeycomb-team",
-    //     env!("HONEYCOMB_API_KEY").parse().unwrap(),
-    // );
+fn init_tracer() -> Result<sdktrace::Tracer, TraceError> {
+    let endpoint = env::var(ENDPOINT).unwrap_or_else(|_| {
+        panic!(
+            "You must specify and endpoint to connect to with the variable {:?}.",
+            ENDPOINT
+        )
+    });
+    let endpoint = Url::parse(&endpoint).expect("endpoint is not a valid url");
+    env::remove_var(ENDPOINT);
+    let mut metadata = MetadataMap::new();
+    for (key, value) in env::vars()
+        .filter(|(name, _)| name.starts_with(HEADER_PREFIX))
+        .map(|(name, value)| {
+            let header_name = name
+                .strip_prefix(HEADER_PREFIX)
+                .map(|h| h.replace('_', "-"))
+                .map(|h| h.to_ascii_lowercase())
+                .unwrap();
+            (header_name, value)
+        })
+    {
+        metadata.insert(MetadataKey::from_str(&key).unwrap(), value.parse().unwrap());
+    }
 
-    let tracer = opentelemetry_otlp::new_pipeline()
+    opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(
-            opentelemetry_otlp::new_exporter().tonic(), // .with_endpoint(env!("OTEL_EXPORTER_OTLP_ENDPOINT"))
-                                                        // .with_env()
-                                                        // .with_tls_config(ClientTlsConfig::new())
-                                                        // .with_metadata(map),
+            opentelemetry_otlp::new_exporter()
+                .tonic()
+                .with_endpoint(endpoint.as_str())
+                .with_metadata(metadata)
+                .with_tls_config(
+                    ClientTlsConfig::new().domain_name(
+                        endpoint
+                            .host_str()
+                            .expect("the specified endpoint should have a valid host"),
+                    ),
+                ),
         )
         .with_trace_config(
             sdktrace::config().with_resource(Resource::new(vec![KeyValue::new(
                 opentelemetry_semantic_conventions::resource::SERVICE_NAME,
-                "circleci-hook",
+                env::var(SERVICE_NAME).unwrap_or("circleci".to_string()),
             )])),
         )
-        .install_simple()
-        // .install_batch(opentelemetry::runtime::Tokio)
-        .expect("build an OTLP tracer");
+        .install_batch(opentelemetry::runtime::Tokio)
+}
+
+#[tokio::main]
+async fn main() {
+    tracing_subscriber::fmt::init();
+
+    let tracer = init_tracer().expect("build an OTLP tracer");
     let state = AppState { tracer };
 
     let app = Router::with_state(state)
@@ -79,7 +117,7 @@ async fn hook_handler(
     debug!("Received request");
     return handle_hook(
         header_value_from_map(&headers),
-        std::env::var("CIRCLECI_HOOK_SECRET_TOKEN").ok(),
+        env::var(SECRET_TOKEN).ok(),
         body.as_ref(),
         &state.tracer,
     )
