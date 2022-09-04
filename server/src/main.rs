@@ -70,11 +70,6 @@ async fn root() -> &'static str {
     "Hello, Mikey and backendsouls!"
 }
 
-// async fn hook_handler(Json(payload): Json<serde_json::Value>) -> &'static str {
-//     debug!("{:#?}", payload);
-//     "Hello, Mikey and backendsouls!"
-// }
-
 #[instrument]
 async fn hook_handler(
     State(state): State<AppState>,
@@ -84,7 +79,7 @@ async fn hook_handler(
     debug!("Received request");
     return handle_hook(
         header_value_from_map(&headers),
-        Some("FOOBAR"),
+        std::env::var("CIRCLECI_HOOK_SECRET_TOKEN").ok(),
         body.as_ref(),
         &state.tracer,
     )

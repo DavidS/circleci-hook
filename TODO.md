@@ -10,7 +10,7 @@
 * create a container for running the hook somewhere/anywhere
 * Fully implement the entire schema in structs; remove serde_json::Value and dependency
 * handle service configuration
-    * key or no secret
+    * ☑️ key or no secret
     * tracer target config
 
 * error handling

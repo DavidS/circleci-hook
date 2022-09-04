@@ -15,7 +15,7 @@ pub fn header_value_from_map(headers: &HeaderMap) -> Option<&str> {
 
 pub async fn handle_hook(
     header_value: Option<&str>,
-    key: Option<&str>,
+    key: Option<String>,
     body: &[u8],
     tracer: &Tracer,
 ) -> &'static str {
