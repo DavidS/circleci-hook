@@ -15,63 +15,6 @@ use tracing::{debug, info};
 use uuid::Uuid;
 
 #[derive(Deserialize, Debug)]
-pub struct Organization {
-    pub id: Uuid,
-    pub name: String,
-}
-// TODO: complete full deserialisation here
-// #[derive(Deserialize, Debug)]
-// pub struct Vcs {
-//     branch: String,
-//     // TODO: complete full deserialisation here
-//     commit: serde_json::Value,
-//     origin_repository_url: String,
-//     provider_name: String,
-//     revision: String,
-//     target_repository_url: String,
-// }
-#[derive(Deserialize, Debug, Default)]
-pub struct Pipeline {
-    pub created_at: DateTime<FixedOffset>,
-    pub id: Uuid,
-    pub number: i64,
-    // TODO: complete full deserialisation here
-    pub trigger: Option<serde_json::Value>,
-    // TODO: complete full deserialisation here
-    pub vcs: Option<serde_json::Value>,
-}
-#[derive(Deserialize, Debug)]
-pub struct Project {
-    pub id: Uuid,
-    pub name: String,
-    pub slug: String,
-}
-#[derive(Deserialize, Debug)]
-pub struct Webhook {
-    pub id: Uuid,
-    pub name: String,
-}
-#[derive(Deserialize, Debug)]
-pub struct Workflow {
-    pub created_at: DateTime<FixedOffset>,
-    pub id: Uuid,
-    pub name: String,
-    pub status: Option<String>,
-    pub stopped_at: Option<DateTime<FixedOffset>>,
-    pub url: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Job {
-    pub id: Uuid,
-    pub name: String,
-    pub number: i64,
-    pub started_at: DateTime<FixedOffset>,
-    pub status: String,
-    pub stopped_at: Option<DateTime<FixedOffset>>,
-}
-
-#[derive(Deserialize, Debug)]
 #[serde(tag = "type")]
 pub enum WebhookPayload {
     #[serde(rename = "ping")]
@@ -197,13 +140,62 @@ impl WebhookPayload {
     }
 }
 
-impl Webhook {
+#[derive(Deserialize, Debug)]
+pub struct Organization {
+    pub id: Uuid,
+    pub name: String,
+}
+
+impl Organization {
     fn to_kv(self: &Self) -> Vec<KeyValue> {
-        return vec![KeyValue {
-            key: Key::new("circleci.webhook.id"),
-            value: Value::String(format!("{}", self.id.urn()).into()),
-        }];
+        return vec![
+            KeyValue {
+                key: Key::new("circleci.organization.id"),
+                value: Value::String(format!("{}", self.id.urn()).into()),
+            },
+            KeyValue {
+                key: Key::new("circleci.organization.name"),
+                value: Value::String(Cow::from(self.name.clone())),
+            },
+        ];
     }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Project {
+    pub id: Uuid,
+    pub name: String,
+    pub slug: String,
+}
+
+impl Project {
+    fn to_kv(self: &Self) -> Vec<KeyValue> {
+        return vec![
+            KeyValue {
+                key: Key::new("circleci.project.id"),
+                value: Value::String(format!("{}", self.id.urn()).into()),
+            },
+            KeyValue {
+                key: Key::new("circleci.project.name"),
+                value: Value::String(Cow::from(self.name.clone())),
+            },
+            KeyValue {
+                key: Key::new("circleci.project.slug"),
+                value: Value::String(Cow::from(self.slug.clone())),
+            },
+        ];
+    }
+}
+
+#[derive(Deserialize, Debug, Default)]
+pub struct Pipeline {
+    pub created_at: DateTime<FixedOffset>,
+    pub id: Uuid,
+    pub number: i64,
+    // TODO: complete full deserialisation here
+    pub trigger: Option<serde_json::Value>,
+    // TODO: complete full deserialisation here
+    pub vcs: Option<serde_json::Value>,
 }
 
 impl Pipeline {
@@ -253,6 +245,31 @@ mod pipeline_tests {
     }
 }
 
+#[derive(Deserialize, Debug)]
+pub struct Webhook {
+    pub id: Uuid,
+    pub name: String,
+}
+
+impl Webhook {
+    fn to_kv(self: &Self) -> Vec<KeyValue> {
+        return vec![KeyValue {
+            key: Key::new("circleci.webhook.id"),
+            value: Value::String(format!("{}", self.id.urn()).into()),
+        }];
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Workflow {
+    pub created_at: DateTime<FixedOffset>,
+    pub id: Uuid,
+    pub name: String,
+    pub status: Option<String>,
+    pub stopped_at: Option<DateTime<FixedOffset>>,
+    pub url: String,
+}
+
 impl Workflow {
     fn to_kv(self: &Self) -> Vec<KeyValue> {
         let mut result = vec![
@@ -277,6 +294,16 @@ impl Workflow {
         }
         result
     }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Job {
+    pub id: Uuid,
+    pub name: String,
+    pub number: i64,
+    pub started_at: DateTime<FixedOffset>,
+    pub status: String,
+    pub stopped_at: Option<DateTime<FixedOffset>>,
 }
 
 impl Job {
@@ -306,39 +333,17 @@ impl Job {
     }
 }
 
-impl Organization {
-    fn to_kv(self: &Self) -> Vec<KeyValue> {
-        return vec![
-            KeyValue {
-                key: Key::new("circleci.organization.id"),
-                value: Value::String(format!("{}", self.id.urn()).into()),
-            },
-            KeyValue {
-                key: Key::new("circleci.organization.name"),
-                value: Value::String(Cow::from(self.name.clone())),
-            },
-        ];
-    }
-}
-
-impl Project {
-    fn to_kv(self: &Self) -> Vec<KeyValue> {
-        return vec![
-            KeyValue {
-                key: Key::new("circleci.project.id"),
-                value: Value::String(format!("{}", self.id.urn()).into()),
-            },
-            KeyValue {
-                key: Key::new("circleci.project.name"),
-                value: Value::String(Cow::from(self.name.clone())),
-            },
-            KeyValue {
-                key: Key::new("circleci.project.slug"),
-                value: Value::String(Cow::from(self.slug.clone())),
-            },
-        ];
-    }
-}
+// TODO: complete full deserialisation here
+// #[derive(Deserialize, Debug)]
+// pub struct Vcs {
+//     branch: String,
+//     // TODO: complete full deserialisation here
+//     commit: serde_json::Value,
+//     origin_repository_url: String,
+//     provider_name: String,
+//     revision: String,
+//     target_repository_url: String,
+// }
 
 // Example webhook payload:
 // {
