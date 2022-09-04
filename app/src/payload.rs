@@ -135,12 +135,16 @@ impl WebhookPayload {
                     debug!("pipeline: {:#?}", pipeline);
                     info!("Processing JobCompleted");
                     tracer.build_with_context(
-                        SpanBuilder::from_name("job")
+                        SpanBuilder::from_name(format!("job: {}", job.name))
                             .with_span_id(job.span_id())
                             .with_start_time(job.started_at)
                             .with_end_time(stopped_at)
                             .with_attributes(
                                 [
+                                    vec![KeyValue {
+                                        key: Key::new("circleci.kind"),
+                                        value: Value::String(Cow::from("job")),
+                                    }],
                                     organization.to_kv(),
                                     project.to_kv(),
                                     pipeline.to_kv(),
@@ -167,13 +171,17 @@ impl WebhookPayload {
                 if let Some(stopped_at) = workflow.stopped_at {
                     info!("Processing WorkflowCompleted");
                     tracer.build(
-                        SpanBuilder::from_name("workflow")
+                        SpanBuilder::from_name(format!("workflow: {}", workflow.name))
                             .with_trace_id(pipeline.trace_id())
                             .with_span_id(pipeline.workflow_span_id())
                             .with_start_time(workflow.created_at)
                             .with_end_time(stopped_at)
                             .with_attributes(
                                 [
+                                    vec![KeyValue {
+                                        key: Key::new("circleci.kind"),
+                                        value: Value::String(Cow::from("workflow")),
+                                    }],
                                     organization.to_kv(),
                                     project.to_kv(),
                                     pipeline.to_kv(),
