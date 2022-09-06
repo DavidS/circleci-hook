@@ -12,8 +12,17 @@ jobs:
           key: cargo-{{ checksum "Cargo.lock" }}
 
       - run: cargo check --workspace
-      - run: cargo test --workspace
+      # - run: cargo install cargo-nextest
+      - run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
+      # - run: cargo install circleci-junit-fix
+      - run: curl -sSL https://github.com/conradludgate/circleci-junit-fix/releases/download/v0.2.0/circleci-junit-fix-v0.2.0-x86_64-unknown-linux-gnu.tar.gz | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
+      - run: cargo nextest run --workspace --profile ci
+      - run: cargo test --workspace --doc
       - run: cargo build --workspace
+
+      - run: cat target/nextest/ci/junit.xml | circleci-junit-fix > fixed-report.xml
+      - store_test_results:
+          path: fixed-report.xml
 
       - save_cache:
           key: cargo-{{ checksum "Cargo.lock" }}
