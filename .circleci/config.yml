@@ -7,7 +7,7 @@ jobs:
       - image: cimg/rust:1.63.0
     steps:
       - restore_cache:
-          key: cargo-<<parameters.cache_version>>-{{ checksum "Cargo.lock" }}
+          key: cargo-{{ checksum "Cargo.lock" }}
 
       - checkout
 
@@ -16,7 +16,7 @@ jobs:
       - run: cargo build --workspace
 
       - save_cache:
-          key: cargo-<<parameters.cache_version>>-{{ checksum "Cargo.lock" }}
+          key: cargo-{{ checksum "Cargo.lock" }}
           paths:
             - ~/.cargo
             - target
