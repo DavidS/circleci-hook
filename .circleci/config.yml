@@ -4,19 +4,17 @@ version: "2.1"
 jobs:
   test:
     docker:
-      - image: cimg/ruby:3.1
+      - image: cimg/rust:1.63.0
     steps:
-      - checkout
-      - run: echo "this is the test job"
-      - run: sleep 10
+      - restore_cache:
+          key: cargo-<<parameters.cache_version>>-{{ checksum "Cargo.lock" }}
 
-# this pipeline is impacted by https://github.com/CircleCI-Public/rust-orb/issues/18 and the fact
-# that the orb doesn't support workspaces. Luckily we only need it for testing webhook delivery.
-orbs:
-  rust: circleci/rust@1.6.0
-workflows:
-  production:
-    jobs:
-      - rust/lint-test-build:
-          version: "1.63.0"
-      - test: {}
+      - checkout
+      - run: cargo check --workspace
+      - run: cargo test --workspace
+      - run: cargo build --workspace
+      - save_cache:
+          key: cargo-<<parameters.cache_version>>-{{ checksum "Cargo.lock" }}
+          paths:
+            - ~/.cargo
+            - target
