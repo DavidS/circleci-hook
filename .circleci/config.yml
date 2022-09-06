@@ -2,7 +2,7 @@ version: 2.1
 
 # Define the jobs we want to run for this project
 jobs:
-  test:
+  build:
     docker:
       - image: cimg/rust:1.63.0
     steps:
