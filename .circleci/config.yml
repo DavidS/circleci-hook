@@ -6,10 +6,10 @@ jobs:
     docker:
       - image: cimg/rust:1.63.0
     steps:
+      - checkout
+
       - restore_cache:
           key: cargo-{{ checksum "Cargo.lock" }}
-
-      - checkout
 
       - run: cargo check --workspace
       - run: cargo test --workspace
