@@ -1,4 +1,4 @@
-version: "2.1"
+version: 2.1
 
 # Define the jobs we want to run for this project
 jobs:
@@ -10,9 +10,11 @@ jobs:
           key: cargo-<<parameters.cache_version>>-{{ checksum "Cargo.lock" }}
 
       - checkout
+
       - run: cargo check --workspace
       - run: cargo test --workspace
       - run: cargo build --workspace
+
       - save_cache:
           key: cargo-<<parameters.cache_version>>-{{ checksum "Cargo.lock" }}
           paths:
