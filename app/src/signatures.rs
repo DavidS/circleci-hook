@@ -53,7 +53,7 @@ mod verification_tests {
     }
 }
 
-pub fn parse_signature_header<'a>(header_value: &str) -> Option<String> {
+pub fn parse_signature_header(header_value: &str) -> Option<String> {
     for signature in header_value.split(',') {
         let splits: Vec<&str> = signature.split('=').collect();
         if splits.len() != 2 {

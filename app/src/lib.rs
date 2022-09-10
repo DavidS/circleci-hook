@@ -30,9 +30,7 @@ pub async fn handle_hook(
     }
 
     if serde_json::from_slice::<WebhookPayload>(body)
-        .map(|payload| {
-            payload.build_span(tracer);
-        })
+        .map(|payload| payload.build_span(tracer))
         .is_ok()
     {
         "Success!"

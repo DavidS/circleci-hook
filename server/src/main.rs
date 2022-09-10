@@ -74,7 +74,7 @@ fn init_tracer() -> Result<sdktrace::Tracer, TraceError> {
         .with_trace_config(
             sdktrace::config().with_resource(Resource::new(vec![KeyValue::new(
                 opentelemetry_semantic_conventions::resource::SERVICE_NAME,
-                env::var(SERVICE_NAME).unwrap_or("circleci".to_string()),
+                env::var(SERVICE_NAME).unwrap_or_else(|_| "circleci".to_string()),
             )])),
         )
         .install_batch(opentelemetry::runtime::Tokio)
