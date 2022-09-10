@@ -47,7 +47,7 @@ pub enum WebhookPayload {
 }
 
 impl WebhookPayload {
-    pub fn build_span(self: &Self, tracer: &Tracer) {
+    pub fn build_span(&self, tracer: &Tracer) {
         match self {
             WebhookPayload::PingEvent {
                 id,
@@ -65,8 +65,8 @@ impl WebhookPayload {
             }
 
             WebhookPayload::JobCompleted {
-                id,
-                happened_at,
+                id: _,
+                happened_at: _,
                 organization,
                 project,
                 pipeline,
@@ -103,8 +103,8 @@ impl WebhookPayload {
             }
 
             WebhookPayload::WorkflowCompleted {
-                id,
-                happened_at,
+                id: _,
+                happened_at: _,
                 organization,
                 project,
                 pipeline,
@@ -147,8 +147,8 @@ pub struct Organization {
 }
 
 impl Organization {
-    fn to_kv(self: &Self) -> Vec<KeyValue> {
-        return vec![
+    fn to_kv(&self) -> Vec<KeyValue> {
+        vec![
             KeyValue {
                 key: Key::new("circleci.organization.id"),
                 value: Value::String(format!("{}", self.id.urn()).into()),
@@ -157,7 +157,7 @@ impl Organization {
                 key: Key::new("circleci.organization.name"),
                 value: Value::String(Cow::from(self.name.clone())),
             },
-        ];
+        ]
     }
 }
 
@@ -169,8 +169,8 @@ pub struct Project {
 }
 
 impl Project {
-    fn to_kv(self: &Self) -> Vec<KeyValue> {
-        return vec![
+    fn to_kv(&self) -> Vec<KeyValue> {
+        vec![
             KeyValue {
                 key: Key::new("circleci.project.id"),
                 value: Value::String(format!("{}", self.id.urn()).into()),
@@ -183,7 +183,7 @@ impl Project {
                 key: Key::new("circleci.project.slug"),
                 value: Value::String(Cow::from(self.slug.clone())),
             },
-        ];
+        ]
     }
 }
 
@@ -199,8 +199,8 @@ pub struct Pipeline {
 }
 
 impl Pipeline {
-    fn to_kv(self: &Self) -> Vec<KeyValue> {
-        return vec![
+    fn to_kv(&self) -> Vec<KeyValue> {
+        vec![
             KeyValue {
                 key: Key::new("circleci.pipeline.id"),
                 value: Value::String(format!("{}", self.id.urn()).into()),
@@ -209,7 +209,7 @@ impl Pipeline {
                 key: Key::new("circleci.pipeline.number"),
                 value: Value::I64(self.number),
             },
-        ];
+        ]
     }
 }
 
@@ -220,11 +220,11 @@ pub struct Webhook {
 }
 
 impl Webhook {
-    fn to_kv(self: &Self) -> Vec<KeyValue> {
-        return vec![KeyValue {
+    fn to_kv(&self) -> Vec<KeyValue> {
+        vec![KeyValue {
             key: Key::new("circleci.webhook.id"),
             value: Value::String(format!("{}", self.id.urn()).into()),
-        }];
+        }]
     }
 }
 
@@ -239,26 +239,26 @@ pub struct Workflow {
 }
 
 impl Workflow {
-    fn trace_id(self: &Self) -> TraceId {
+    fn trace_id(&self) -> TraceId {
         TraceId::from_bytes(*self.id.as_bytes())
     }
 
-    fn span_id(self: &Self) -> SpanId {
+    fn span_id(&self) -> SpanId {
         SpanId::from_bytes(*array_ref!(self.id.as_bytes(), 0, 8))
     }
 
-    fn context(self: &Self) -> Context {
+    fn context(&self) -> Context {
         let cx = Context::current();
-        return cx.with_remote_span_context(SpanContext::new(
+        cx.with_remote_span_context(SpanContext::new(
             self.trace_id(),
             self.span_id(),
             TraceFlags::SAMPLED,
             false,
             TraceState::default(),
-        ));
+        ))
     }
 
-    fn to_kv(self: &Self) -> Vec<KeyValue> {
+    fn to_kv(&self) -> Vec<KeyValue> {
         let mut result = vec![
             KeyValue {
                 key: Key::new("circleci.workflow.id"),
@@ -307,11 +307,11 @@ pub struct Job {
 }
 
 impl Job {
-    fn span_id(self: &Self) -> SpanId {
+    fn span_id(&self) -> SpanId {
         SpanId::from_bytes(*array_ref!(self.id.as_bytes(), 0, 8))
     }
 
-    fn to_kv(self: &Self) -> Vec<KeyValue> {
+    fn to_kv(&self) -> Vec<KeyValue> {
         vec![
             KeyValue {
                 key: Key::new("circleci.job.id"),

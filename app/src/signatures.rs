@@ -20,7 +20,7 @@ pub fn verify_signature(body: &[u8], key: &[u8], signature_hex: String) -> bool 
         return true;
     }
     warn!("FAILED signature verification: {:?}", result);
-    return false;
+    false
 }
 
 #[cfg(test)]
@@ -54,8 +54,8 @@ mod verification_tests {
 }
 
 pub fn parse_signature_header<'a>(header_value: &str) -> Option<String> {
-    for signature in header_value.split(",") {
-        let splits: Vec<&str> = signature.split("=").collect();
+    for signature in header_value.split(',') {
+        let splits: Vec<&str> = signature.split('=').collect();
         if splits.len() != 2 {
             warn!(
                 "Invalid header `{}`, does contain {} parts!",

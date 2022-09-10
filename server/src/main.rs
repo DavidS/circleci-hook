@@ -115,11 +115,11 @@ async fn hook_handler(
     body: Bytes,
 ) -> &'static str {
     debug!("Received request");
-    return handle_hook(
+    handle_hook(
         header_value_from_map(&headers),
         env::var(SECRET_TOKEN).ok(),
         body.as_ref(),
         &state.tracer,
     )
-    .await;
+    .await
 }

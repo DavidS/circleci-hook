@@ -4,8 +4,8 @@ use signatures::{parse_signature_header, verify_signature};
 
 use crate::payload::WebhookPayload;
 
-pub mod signatures;
 pub mod payload;
+pub mod signatures;
 
 pub fn header_value_from_map(headers: &HeaderMap) -> Option<&str> {
     headers
@@ -20,9 +20,7 @@ pub async fn handle_hook(
     tracer: &Tracer,
 ) -> &'static str {
     if let Some(key) = key {
-        if let Some(signature_hex) =
-            header_value.and_then(|header_value| parse_signature_header(header_value))
-        {
+        if let Some(signature_hex) = header_value.and_then(parse_signature_header) {
             if !verify_signature(body, key.as_bytes(), signature_hex) {
                 todo!("Deal with failing signature verification");
             }
@@ -31,11 +29,13 @@ pub async fn handle_hook(
         }
     }
 
-    if serde_json::from_slice::<WebhookPayload>(body.as_ref())
-        .and_then(|payload| Ok(payload.build_span(tracer)))
+    if serde_json::from_slice::<WebhookPayload>(body)
+        .map(|payload| {
+            payload.build_span(tracer);
+        })
         .is_ok()
     {
-        return "Success!";
+        "Success!"
     } else {
         todo!("Error handling")
     }
