@@ -12,7 +12,7 @@ use opentelemetry::{
     KeyValue,
 };
 use opentelemetry_otlp::WithExportConfig;
-use std::{env, net::SocketAddr, str::FromStr};
+use std::{env, str::FromStr};
 use tonic::{
     metadata::{MetadataKey, MetadataMap},
     transport::ClientTlsConfig,
@@ -96,7 +96,7 @@ async fn main() {
                 .layer(TraceLayer::new_for_http()),
         );
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = "[::]:3000".parse().unwrap();
     info!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())

@@ -6,8 +6,6 @@ kill_timeout = 5
 processes = []
 
 [build]
-  builder = "docker.cloudsmith.io/dev_el_ops/stuff/rust-builder"
-  buildpacks = ["docker.io/paketocommunity/rust"]
 
 [env]
 
@@ -17,7 +15,7 @@ processes = []
 
 [[services]]
   http_checks = []
-  internal_port = 8080
+  internal_port = 3000
   processes = ["app"]
   protocol = "tcp"
   script_checks = []
