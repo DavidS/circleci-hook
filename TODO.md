@@ -6,7 +6,7 @@
     * ☑️ capture other details
     * ☑️ make unique traceid/spanid for reruns of a pipeline
 
-* configure direct export to honeycomb, instead of going through the collector
+* ☑️ configure direct export to honeycomb, instead of going through the collector
 * create a container for running the hook somewhere/anywhere
 * Fully implement the entire schema in structs; remove serde_json::Value and dependency
 * handle service configuration
