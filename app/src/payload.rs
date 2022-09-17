@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use arrayref::array_ref;
 use chrono::{DateTime, FixedOffset};
 use opentelemetry::{
@@ -8,7 +6,7 @@ use opentelemetry::{
         SpanBuilder, SpanContext, SpanId, TraceContextExt, TraceFlags, TraceId, TraceState,
         Tracer as TracerTrait,
     },
-    Context, Key, KeyValue, Value,
+    Context, Key, KeyValue, StringValue, Value,
 };
 use serde::Deserialize;
 use tracing::{debug, info};
@@ -86,7 +84,7 @@ impl WebhookPayload {
                                 [
                                     vec![KeyValue {
                                         key: Key::new("circleci.kind"),
-                                        value: Value::String(Cow::from("job")),
+                                        value: Value::String(StringValue::from("job")),
                                     }],
                                     organization.to_kv(),
                                     project.to_kv(),
@@ -123,7 +121,7 @@ impl WebhookPayload {
                                 [
                                     vec![KeyValue {
                                         key: Key::new("circleci.kind"),
-                                        value: Value::String(Cow::from("workflow")),
+                                        value: Value::String(StringValue::from("workflow")),
                                     }],
                                     organization.to_kv(),
                                     project.to_kv(),
@@ -155,7 +153,7 @@ impl Organization {
             },
             KeyValue {
                 key: Key::new("circleci.organization.name"),
-                value: Value::String(Cow::from(self.name.clone())),
+                value: Value::String(StringValue::from(self.name.clone())),
             },
         ]
     }
@@ -177,11 +175,11 @@ impl Project {
             },
             KeyValue {
                 key: Key::new("circleci.project.name"),
-                value: Value::String(Cow::from(self.name.clone())),
+                value: Value::String(StringValue::from(self.name.clone())),
             },
             KeyValue {
                 key: Key::new("circleci.project.slug"),
-                value: Value::String(Cow::from(self.slug.clone())),
+                value: Value::String(StringValue::from(self.slug.clone())),
             },
         ]
     }
@@ -266,17 +264,17 @@ impl Workflow {
             },
             KeyValue {
                 key: Key::new("circleci.workflow.name"),
-                value: Value::String(Cow::from(self.name.clone())),
+                value: Value::String(StringValue::from(self.name.clone())),
             },
             KeyValue {
                 key: Key::new("circleci.workflow.url"),
-                value: Value::String(Cow::from(self.url.clone())),
+                value: Value::String(StringValue::from(self.url.clone())),
             },
         ];
         if let Some(status) = &self.status {
             result.push(KeyValue {
                 key: Key::new("circleci.workflow.status"),
-                value: Value::String(Cow::from(status.clone())),
+                value: Value::String(StringValue::from(status.clone())),
             });
         }
         result
@@ -319,7 +317,7 @@ impl Job {
             },
             KeyValue {
                 key: Key::new("circleci.job.name"),
-                value: Value::String(Cow::from(self.name.clone())),
+                value: Value::String(StringValue::from(self.name.clone())),
             },
             KeyValue {
                 key: Key::new("circleci.job.number"),
@@ -327,7 +325,7 @@ impl Job {
             },
             KeyValue {
                 key: Key::new("circleci.job.status"),
-                value: Value::String(Cow::from(self.status.clone())),
+                value: Value::String(StringValue::from(self.status.clone())),
             },
         ]
     }
