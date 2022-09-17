@@ -1,7 +1,8 @@
 use axum::{
     body::Bytes,
     extract::State,
-    http::HeaderMap,
+    http::{HeaderMap, StatusCode},
+    response::{IntoResponse, Response},
     routing::{get, post},
     Router,
 };
@@ -19,7 +20,7 @@ use tonic::{
 };
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
-use tracing::{debug, info, instrument};
+use tracing::{debug, info, instrument, log};
 use url::Url;
 
 #[derive(Clone, Debug)]
@@ -109,17 +110,20 @@ async fn root() -> &'static str {
 }
 
 #[instrument]
-async fn hook_handler(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-    body: Bytes,
-) -> &'static str {
+async fn hook_handler(State(state): State<AppState>, headers: HeaderMap, body: Bytes) -> Response {
     debug!("Received request");
-    handle_hook(
+    match handle_hook(
         header_value_from_map(&headers),
         env::var(SECRET_TOKEN).ok(),
         body.as_ref(),
         &state.tracer,
     )
     .await
+    {
+        Ok(msg) => (StatusCode::OK, msg).into_response(),
+        Err(error) => {
+            log::error!("Error processing request: {:?}", error);
+            (StatusCode::NOT_ACCEPTABLE, "Not Acceptable").into_response()
+        }
+    }
 }
