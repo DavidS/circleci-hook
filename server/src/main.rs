@@ -112,14 +112,14 @@ async fn root() -> &'static str {
 #[instrument]
 async fn hook_handler(State(state): State<AppState>, headers: HeaderMap, body: Bytes) -> Response {
     debug!("Received request");
-    match handle_hook(
+    let hook_result = handle_hook(
         header_value_from_map(&headers),
         env::var(SECRET_TOKEN).ok(),
         body.as_ref(),
         &state.tracer,
     )
-    .await
-    {
+    .await;
+    match hook_result {
         Ok(msg) => (StatusCode::OK, msg).into_response(),
         Err(error) => {
             log::error!("Error processing request: {:?}", error);
