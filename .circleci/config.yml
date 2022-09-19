@@ -6,25 +6,14 @@ jobs:
     docker:
       - image: cimg/rust:1.63.0
     steps:
-      - checkout
+      - run: curl "$HOOK_URL/traceparent/$CIRCLE_WORKFLOW_ID/CIRCLE_WORKFLOW_JOB_ID" >> "$BASH_ENV"
+      - run:
+          name: test otel-cli
+          command: |
+            curl -L https://github.com/equinix-labs/otel-cli/releases/download/v0.0.20/otel-cli-0.0.20-Linux-x86_64.tar.gz | tar xvzf - -C /usr/local/bin
+            otel-cli exec --service my-service --name "curl google" curl https://google.com
 
-      - run:
-          name: test1
-          command: |
-            set +e
-            env | sort
-            cat $CIRCLE_INTERNAL_TASK_DATA
-            echo ======
-            cat $CIRCLE_INTERNAL_CONFIG
-            echo 'export TRACEPARENT=testdata' >> "$BASH_ENV"
-      - run:
-          name: test2
-          command: |
-            set +e
-            env | sort
-            cat $CIRCLE_INTERNAL_TASK_DATA
-            echo ======
-            cat $CIRCLE_INTERNAL_CONFIG
+      - checkout
 
       - restore_cache:
           key: cargo-{{ checksum "Cargo.lock" }}

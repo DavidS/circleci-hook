@@ -1,12 +1,12 @@
 use axum::{
     body::Bytes,
-    extract::State,
+    extract::{Path, State},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
     Router,
 };
-use circleci_hook_app::{handle_hook, header_value_from_map};
+use circleci_hook_app::{handle_hook, header_value_from_map, translate_traceparent};
 use opentelemetry::{
     sdk::{trace as sdktrace, Resource},
     trace::TraceError,
@@ -22,6 +22,7 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing::{debug, info, instrument, log};
 use url::Url;
+use uuid::Uuid;
 
 #[derive(Clone, Debug)]
 struct AppState {
@@ -91,6 +92,10 @@ async fn main() {
     let app = Router::with_state(state)
         .route("/", get(root))
         .route("/", post(hook_handler))
+        .route(
+            "/traceparent/:workflow_id/:job_id",
+            get(traceparent_handler),
+        )
         .layer(
             ServiceBuilder::new()
                 // .layer(middleware::from_fn(validate_circleci_signature))
@@ -126,4 +131,10 @@ async fn hook_handler(State(state): State<AppState>, headers: HeaderMap, body: B
             (StatusCode::NOT_ACCEPTABLE, "Not Acceptable").into_response()
         }
     }
+}
+
+#[instrument]
+async fn traceparent_handler(Path((workflow_id, job_id)): Path<(Uuid, Uuid)>) -> String {
+    debug!("Received request");
+    translate_traceparent(workflow_id, job_id)
 }
