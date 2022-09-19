@@ -10,7 +10,7 @@ jobs:
       - run:
           name: test otel-cli
           command: |
-            curl -L https://github.com/equinix-labs/otel-cli/releases/download/v0.0.20/otel-cli-0.0.20-Linux-x86_64.tar.gz | tar xvzf - -C /usr/local/bin
+            curl -L https://github.com/equinix-labs/otel-cli/releases/download/v0.0.20/otel-cli-0.0.20-Linux-x86_64.tar.gz | sudo tar xvzf - -C /usr/local/bin
             otel-cli exec --service my-service --name "curl google" curl https://google.com
 
       - checkout
