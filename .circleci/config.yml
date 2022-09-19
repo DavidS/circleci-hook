@@ -8,28 +8,37 @@ jobs:
     steps:
       - run: curl "${HOOK_URL}/traceparent/${CIRCLE_WORKFLOW_ID}/${CIRCLE_WORKFLOW_JOB_ID}" >> "$BASH_ENV"
       - run:
-          name: test otel-cli
+          name: install otel-cli
           command: |
             curl -L https://github.com/equinix-labs/otel-cli/releases/download/v0.0.20/otel-cli-0.0.20-Linux-x86_64.tar.gz | sudo tar xvzf - -C /usr/local/bin
-            otel-cli exec --service my-service --name "curl google" curl https://google.com
 
-      - run: sudo apt update && sudo apt install -y protobuf-compiler
+      - run:
+          name: install protoc
+          command: |
+            sudo apt update
+            sudo apt install -y protobuf-compiler
 
       - checkout
 
       - restore_cache:
           key: cargo-{{ checksum "Cargo.lock" }}
 
-      - run: cargo check --workspace
-      # - run: cargo install cargo-nextest
-      - run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
-      # - run: cargo install circleci-junit-fix
-      - run: curl -sSL https://github.com/conradludgate/circleci-junit-fix/releases/download/v0.2.0/circleci-junit-fix-v0.2.0-x86_64-unknown-linux-gnu.tar.gz | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
-      - run: cargo nextest run --workspace --profile ci
-      - run: cargo test --workspace --doc
-      - run: cargo build --workspace
+      - run: otel-cli exec --service cargo --name "cargo check" cargo check --workspace
 
-      - run: cat target/nextest/ci/junit.xml | circleci-junit-fix > fixed-report.xml
+      - run:
+          name: install cargo-nextest
+          command: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
+      - run:
+          name: install circleci-junit-fix
+          command: curl -sSL https://github.com/conradludgate/circleci-junit-fix/releases/download/v0.2.0/circleci-junit-fix-v0.2.0-x86_64-unknown-linux-gnu.tar.gz | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
+
+      - run: otel-cli exec --service cargo --name "cargo nextest" cargo nextest run --workspace --profile ci
+      - run: otel-cli exec --service cargo --name "cargo test" cargo test --workspace --doc
+      - run: otel-cli exec --service cargo --name "cargo build" cargo build --workspace
+
+      - run:
+          name: fix junit XML
+          command: cat target/nextest/ci/junit.xml | circleci-junit-fix > fixed-report.xml
       - store_test_results:
           path: fixed-report.xml
 
