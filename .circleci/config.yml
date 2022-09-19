@@ -6,7 +6,9 @@ jobs:
     docker:
       - image: cimg/rust:1.63.0
     steps:
-      - run: curl "${HOOK_URL}/traceparent/${CIRCLE_WORKFLOW_ID}/${CIRCLE_WORKFLOW_JOB_ID}" >> "$BASH_ENV"
+      - run:
+          name: configure traceparent
+          command: curl "${HOOK_URL}/traceparent/${CIRCLE_WORKFLOW_ID}/${CIRCLE_WORKFLOW_JOB_ID}" >> "$BASH_ENV"
       - run:
           name: install otel-cli
           command: |
