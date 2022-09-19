@@ -12,6 +12,7 @@
 * [ ] handle service configuration
     * [x] key or no secret
     * [ ] tracer target config
+    * [ ] default CIRCLECI_OTLP_ENDPOINT to OTLP's default instead of aborting.
 
 * [x] move app code to separate crate
 * [x] better logging than println!
