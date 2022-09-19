@@ -23,7 +23,7 @@ jobs:
       - restore_cache:
           key: cargo-{{ checksum "Cargo.lock" }}
 
-      - run: otel-cli exec --service cargo --name "cargo check" cargo check --workspace
+      - run: otel-cli exec --service cargo --name "cargo check" -- cargo check --workspace
 
       - run:
           name: install cargo-nextest
@@ -32,9 +32,9 @@ jobs:
           name: install circleci-junit-fix
           command: curl -sSL https://github.com/conradludgate/circleci-junit-fix/releases/download/v0.2.0/circleci-junit-fix-v0.2.0-x86_64-unknown-linux-gnu.tar.gz | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
 
-      - run: otel-cli exec --service cargo --name "cargo nextest" cargo nextest run --workspace --profile ci
-      - run: otel-cli exec --service cargo --name "cargo test" cargo test --workspace --doc
-      - run: otel-cli exec --service cargo --name "cargo build" cargo build --workspace
+      - run: otel-cli exec --service cargo --name "cargo nextest" -- cargo nextest run --workspace --profile ci
+      - run: otel-cli exec --service cargo --name "cargo test" -- cargo test --workspace --doc
+      - run: otel-cli exec --service cargo --name "cargo build" -- cargo build --workspace
 
       - run:
           name: fix junit XML
