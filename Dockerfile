@@ -1,5 +1,7 @@
 FROM rust:1.63-slim-bullseye AS builder
 
+RUN apt update && apt install -y protobuf-compiler
+
 WORKDIR /app
 COPY . .
 RUN --mount=type=cache,target=/app/target \
