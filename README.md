@@ -34,7 +34,7 @@ You'll need to remember the API key for later.
 * [Sign Up](https://fly.io/docs/hands-on/sign-up/)
 * [Sign In](https://fly.io/docs/hands-on/sign-in/)
 
-Now the server can be deployed, by running `flyctl deploy` command from a checkout of this repo. The first time around, `flyctl` will ask for a few questions for the first-time set up the application, and then build and deploy [the server image](../Dockerfile).
+Now the server can be deployed, by running `flyctl deploy` command from a checkout of this repo. The first time around, `flyctl` will ask for a few questions for the first-time set up the application, and then build and deploy [the server image](Dockerfile).
 
 The first deploy will fail, as the server requires some configuration to work:
 
@@ -161,6 +161,6 @@ OTEL_EXPORTER_OTLP_HEADERS="x-honeycomb-dataset=circleci,x-honeycomb-team=HONEYC
 
 # Example Results
 
-The [pipeline for this repository](../.circleci/config.yml) has a few `otel-cli` calls. In Honeycomb, this looks like this:
+The [pipeline for this repository](.circleci/config.yml) has a few `otel-cli` calls. In Honeycomb, this looks like this:
 
 ![Honeycomb results for a CI run of this project](docs/assets/honeycomb-waterfall.png)
