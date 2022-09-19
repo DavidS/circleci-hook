@@ -13,7 +13,7 @@ jobs:
             curl -L https://github.com/equinix-labs/otel-cli/releases/download/v0.0.20/otel-cli-0.0.20-Linux-x86_64.tar.gz | sudo tar xvzf - -C /usr/local/bin
             otel-cli exec --service my-service --name "curl google" curl https://google.com
 
-      - run: apt update && apt install -y protobuf-compiler
+      - run: sudo apt update && sudo apt install -y protobuf-compiler
 
       - checkout
 
