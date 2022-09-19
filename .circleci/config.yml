@@ -8,6 +8,24 @@ jobs:
     steps:
       - checkout
 
+      - run:
+          name: test1
+          command: |
+            set +e
+            env | sort
+            cat $CIRCLE_INTERNAL_TASK_DATA
+            echo ======
+            cat $CIRCLE_INTERNAL_CONFIG
+            echo 'export TRACEPARENT=testdata' >> "$BASH_ENV"
+      - run:
+          name: test2
+          command: |
+            set +e
+            env | sort
+            cat $CIRCLE_INTERNAL_TASK_DATA
+            echo ======
+            cat $CIRCLE_INTERNAL_CONFIG
+
       - restore_cache:
           key: cargo-{{ checksum "Cargo.lock" }}
 
