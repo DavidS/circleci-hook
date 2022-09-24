@@ -1,4 +1,5 @@
-* [ ] write README explaining project and deployment options
+* [ ] release crates
+    * [ ] docs.rs ?
 
 * [ ] improve data quality
     * [x] capture job name
@@ -14,6 +15,7 @@
     * [ ] tracer target config
     * [ ] default CIRCLECI_OTLP_ENDPOINT to OTLP's default instead of aborting.
 
+* [x] write README explaining project and deployment options
 * [x] move app code to separate crate
 * [x] better logging than println!
 * [x] configure direct export to honeycomb, instead of going through the collector
