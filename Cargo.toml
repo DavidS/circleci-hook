@@ -25,4 +25,4 @@ url = "2.2.0"
 uuid = { version = "1.1.2", features = ["serde"] }
 
 [workspace]
-members = ["app"]
+members = ["app", "lambda"]
